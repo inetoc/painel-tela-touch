@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tela touch</title>
+<style>
+:root{--bg:#0f0d1c;--card:#1a1733;--line:#2e2a5a;--txt:#ece9ff;--mut:#9a96c4;--ok:#1e8c5a;--bad:#aa3246;--neu:#3c376e;--acc:#6e46c8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:18px;max-width:900px;margin:0 auto}
+header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+h1{font-size:22px}
+h2{font-size:16px;margin:22px 0 10px;color:var(--mut)}
+.dot{width:12px;height:12px;border-radius:50%;background:#666}
+.dot.on{background:#3ddc97;box-shadow:0 0 8px #3ddc97}
+.dot.off{background:#ff5a6a}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{border:0;border-radius:14px;padding:18px;color:#fff;text-align:left;cursor:pointer;font:inherit;min-height:92px;transition:transform .12s}
+.card:active{transform:scale(.97)}
+.card b{display:block;font-size:17px;margin-bottom:4px}
+.card span{font-size:13px;opacity:.9}
+.ok{background:var(--ok)}.bad{background:var(--bad)}.neutral{background:var(--neu)}
+textarea{width:100%;height:170px;background:#07060f;color:#cfe3ff;border:1px solid var(--line);border-radius:12px;padding:12px;font:13px ui-monospace,Consolas,monospace;resize:vertical}
+.row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+button.b{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer}
+button.b.alt{background:var(--neu)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.chip{background:var(--card);border:1px solid var(--line);color:var(--mut);padding:6px 12px;border-radius:99px;cursor:pointer;font-size:13px}
+pre{background:#07060f;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;white-space:pre-wrap;word-break:break-word;font:12.5px ui-monospace,Consolas,monospace;min-height:60px;max-height:420px;overflow:auto}
+details{background:var(--card);border-radius:12px;padding:12px}
+summary{cursor:pointer;color:var(--mut)}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+td,th{padding:6px;border-bottom:1px solid var(--line);text-align:left}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#3ddc97;color:#04130c;padding:10px 18px;border-radius:99px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
+#toast.show{opacity:1}#toast.err{background:#ff5a6a;color:#fff}
+#modal{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;padding:20px}
+#modal.show{display:flex}
+#modal div{background:var(--card);padding:22px;border-radius:14px;width:100%;max-width:380px}
+#modal input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;margin:12px 0;font-size:16px}
+#bar{height:10px;background:#0a0818;border:1px solid #2a2550;border-radius:8px;margin:10px 0;overflow:hidden;display:none;position:relative}
+#barf{height:100%;width:0;background:linear-gradient(90deg,#6c3fd1,#9b7bff);transition:width .25s linear}
+#barp{font-size:12px;color:#9a96c4;margin-left:auto}
+</style>
+</head>
+<body>
+<header><span class="dot" id="conn"></span><h1>Tela touch</h1></header>
+
+<div class="grid" id="grid"></div>
+
+<h2>Texto ao vivo na tela touch</h2>
+<textarea id="txt" style="height:90px;font:16px system-ui" placeholder="Escreve aqui e aperta Enviar (Ctrl+Enter). Antes, toca no card Tela de texto pra abrir la."></textarea>
+<div class="row"><button class="b" id="env">Enviar</button><button class="b alt" id="envl">Limpar la</button></div>
+
+<h2>Rodar PowerShell na tela touch</h2>
+<div class="chips" id="presets"></div>
+<textarea id="ps" placeholder="Cola aqui o script PowerShell. Ele roda NA TELA TOUCH, como administrador."></textarea>
+<div class="row">
+  <button class="b" id="run">Executar (Ctrl+Enter)</button>
+  <button class="b alt" id="clr">Limpar saida</button>
+  <span id="tempo" style="color:#9a96c4;font-size:13px"></span><span id="barp"></span>
+</div>
+<div id="bar"><div id="barf"></div></div>
+<pre id="out">A saida aparece aqui.</pre>
+
+<h2>Avancado</h2>
+<details id="det"><summary>Lista de dispositivos de entrada (teclado, mouse, toque)</summary>
+  <table id="devs"></table>
+</details>
+
+<div id="toast"></div>
+<div id="modal"><div>
+  <b>Token do painel</b>
+  <p style="color:#9a96c4;font-size:13px;margin-top:6px">Esta no arquivo C:\prisma\painel\token.txt da tela touch.</p>
+  <input id="tk" type="text" autocomplete="off" placeholder="cola o token">
+  <button class="b" id="tkok">Entrar</button>
+</div></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let TOKEN = '';
+try { TOKEN = localStorage.getItem('tk') || ''; } catch (e) {}
+if (location.hash.length > 1) {
+  TOKEN = decodeURIComponent(location.hash.slice(1));
+  try { localStorage.setItem('tk', TOKEN); } catch (e) {}
+  history.replaceState(null, '', location.pathname);
+}
+
+function toast(t, ruim) {
+  const el = $('#toast');
+  el.textContent = t;
+  el.className = 'show' + (ruim ? ' err' : '');
+  setTimeout(() => { el.className = ''; }, 2800);
+}
+
+function pedirToken() { $('#modal').classList.add('show'); }
+$('#tkok').onclick = () => {
+  TOKEN = $('#tk').value.trim();
+  try { localStorage.setItem('tk', TOKEN); } catch (e) {}
+  $('#modal').classList.remove('show');
+  refresh();
+};
+
+async function api(rota, corpo) {
+  const r = await fetch('/api/' + rota, {
+    method: corpo ? 'POST' : 'GET',
+    headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' },
+    body: corpo ? JSON.stringify(corpo) : undefined
+  });
+  if (r.status === 401) { pedirToken(); throw new Error('token errado'); }
+  return r.json();
+}
+
+const tri = v => v === 'on' ? ['ok', 'LIGADO (toca pra desligar)']
+  : v === 'off' ? ['bad', 'DESLIGADO (toca pra ligar)']
+  : ['neutral', 'nao encontrado (usa a lista avancada)'];
+
+async function enviar(t) {
+  try { const r = await api('texto', { t }); toast(r.ok ? (t ? 'Enviado' : 'Limpo') : 'Falhou', !r.ok); }
+  catch (e) { toast('Erro: ' + (e.message || e), true); }
+}
+$('#env').onclick = () => enviar($('#txt').value);
+$('#envl').onclick = () => { $('#txt').value = ''; enviar(''); };
+$('#txt').addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') enviar($('#txt').value); });
+const CARDS = [
+  { nome: 'Teclado fisico', f: s => s.teclado_bloqueado ? ['bad', 'BLOQUEADO (toca pra liberar)'] : ['ok', 'liberado (toca pra bloquear)'], go: () => api('acao', { nome: 'teclado' }) },
+  { nome: 'Touchpad', f: s => tri(s.touchpad), go: () => api('toggle', { tipo: 'touchpad' }) },
+  { nome: 'Touchscreen', f: s => tri(s.touchscreen), go: () => api('toggle', { tipo: 'touchscreen' }) },
+  { nome: 'Teclado na tela', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'osk' }) },
+  { nome: 'Tela de texto', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'abrir_tela' }) },
+  { nome: 'Atualizar painel', f: () => ['neutral', 'puxa a versao nova do GitHub'], go: async () => { const r = await api('acao', { nome: 'atualizar' }); if (r.ok) { toast('Reiniciando...'); setTimeout(() => location.reload(), 7000); } return r; } },
+  { nome: 'Apagar a tela', f: () => ['neutral', 'agora'], go: () => api('acao', { nome: 'tela_off' }) },
+  { nome: 'Nunca dormir', f: s => s.nunca_dormir ? ['ok', 'ATIVO (toca pra desativar)'] : ['neutral', 'desativado (toca pra ativar)'], go: () => api('acao', { nome: 'sono' }) },
+  { nome: 'Reativar tudo', f: () => ['neutral', 'teclado, touchpad e touch'], go: () => api('acao', { nome: 'reativar' }) },
+  { nome: 'Reiniciar', f: () => ['bad', ''], go: () => confirm('Reiniciar a tela touch?') ? api('acao', { nome: 'reiniciar' }) : null },
+  { nome: 'Desligar', f: () => ['bad', ''], go: () => confirm('Desligar a tela touch?') ? api('acao', { nome: 'desligar' }) : null }
+];
+
+let ST = {};
+function desenhar() {
+  const g = $('#grid');
+  g.innerHTML = '';
+  CARDS.forEach(c => {
+    const [cls, txt] = c.f(ST);
+    const b = document.createElement('button');
+    b.className = 'card ' + cls;
+    b.innerHTML = '<b>' + c.nome + '</b><span>' + txt + '</span>';
+    b.onclick = async () => {
+      try {
+        const r = await c.go();
+        if (r) toast(r.msg || 'ok', r.ok === false);
+      } catch (e) { toast(String(e.message || e), true); }
+      setTimeout(refresh, 1200);
+    };
+    g.appendChild(b);
+  });
+}
+
+async function refresh() {
+  try {
+    ST = await api('status');
+    $('#conn').className = 'dot on';
+    desenhar();
+  } catch (e) {
+    $('#conn').className = 'dot off';
+  }
+}
+
+const PRESETS = {
+  'Resumo do PC': "Get-CimInstance Win32_OperatingSystem | Select-Object @{n='RAM livre GB';e={[math]::Round($_.FreePhysicalMemory/1MB,1)}}, LastBootUpTime | Format-List\nGet-Volume | Where-Object DriveLetter | Select-Object DriveLetter, @{n='Livre GB';e={[math]::Round($_.SizeRemaining/1GB)}} | Format-Table -AutoSize\nGet-Process | Sort-Object WorkingSet -Descending | Select-Object -First 8 Name, @{n='MB';e={[math]::Round($_.WorkingSet/1MB)}} | Format-Table -AutoSize",
+  'Programas instalados': "Get-ItemProperty 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' | Where-Object DisplayName | Select-Object DisplayName, DisplayVersion | Sort-Object DisplayName | Format-Table -AutoSize",
+  'Tailscale status': "& 'C:\\Program Files\\Tailscale\\tailscale.exe' status"
+};
+Object.keys(PRESETS).forEach(k => {
+  const c = document.createElement('span');
+  c.className = 'chip';
+  c.textContent = k;
+  c.onclick = () => { $('#ps').value = PRESETS[k]; };
+  $('#presets').appendChild(c);
+});
+
+async function rodar() {
+  const script = $('#ps').value;
+  if (!script.trim()) return;
+  $('#out').textContent = 'Rodando na tela touch...';
+  $('#tempo').textContent = '';
+  $('#run').disabled = true;
+  let pct = 0;
+  $('#bar').style.display = 'block';
+  const tick = setInterval(() => { pct += (95 - pct) * 0.04; $('#barf').style.width = pct + '%'; $('#barp').textContent = Math.round(pct) + '%'; }, 250);
+  try {
+    const r = await api('run', { script });
+    $('#out').textContent = (r.saida || '(sem saida)') + '\n[codigo de saida: ' + r.codigo + ']';
+    $('#tempo').textContent = r.seg + ' s';
+  } catch (e) {
+    $('#out').textContent = 'Erro: ' + (e.message || e);
+  }
+  clearInterval(tick);
+  $('#barf').style.width = '100%'; $('#barp').textContent = '100%';
+  setTimeout(() => { $('#bar').style.display = 'none'; $('#barp').textContent = ''; $('#barf').style.width = '0'; }, 1200);
+  $('#run').disabled = false;
+}
+$('#run').onclick = rodar;
+$('#clr').onclick = () => { $('#out').textContent = ''; };
+$('#ps').addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') rodar(); });
+
+$('#det').addEventListener('toggle', async () => {
+  if (!$('#det').open) return;
+  $('#devs').innerHTML = '<tr><td>Carregando...</td></tr>';
+  try {
+    const lista = await api('devs');
+    $('#devs').innerHTML = '<tr><th>Estado</th><th>Tipo</th><th>Nome</th><th></th></tr>';
+    lista.forEach(d => {
+      const tr = document.createElement('tr');
+      const on = d.Status === 'OK';
+      tr.innerHTML = '<td>' + (on ? 'ligado' : 'desligado') + '</td><td>' + d.Class + '</td><td>' + d.FriendlyName + '</td><td></td>';
+      const b = document.createElement('button');
+      b.className = 'b alt';
+      b.textContent = on ? 'Desligar' : 'Ligar';
+      b.onclick = async () => {
+        const r = await api('dev', { id: d.InstanceId });
+        toast(r.msg || 'ok', r.ok === false);
+        $('#det').open = false;
+        setTimeout(refresh, 1200);
+      };
+      tr.lastChild.appendChild(b);
+      $('#devs').appendChild(tr);
+    });
+  } catch (e) {
+    $('#devs').innerHTML = '<tr><td>Erro: ' + (e.message || e) + '</td></tr>';
+  }
+});
+
+if (!TOKEN) pedirToken();
+refresh();
+setInterval(refresh, 8000);
+</script>
+</body>
+</html>
