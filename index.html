@@ -37,6 +37,9 @@ td,th{padding:6px;border-bottom:1px solid var(--line);text-align:left}
 #modal{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;padding:20px}
 #modal.show{display:flex}
 #modal div{background:var(--card);padding:22px;border-radius:14px;width:100%;max-width:380px}
+#keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+#keys button{font:inherit;font-size:26px;font-weight:700;padding:16px 0;border:0;border-radius:12px;background:var(--neu);color:#fff;cursor:pointer}
+#keys button:active{background:var(--acc)}
 #modal input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;margin:12px 0;font-size:16px}
 #bar{height:10px;background:#0a0818;border:1px solid #2a2550;border-radius:8px;margin:10px 0;overflow:hidden;display:none;position:relative}
 #barf{height:100%;width:0;background:linear-gradient(90deg,#6c3fd1,#9b7bff);transition:width .25s linear}
@@ -85,8 +88,9 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
 <div id="modal"><div>
   <b>Token do painel</b>
   <p style="color:#9a96c4;font-size:13px;margin-top:6px">Esta no arquivo C:\prisma\painel\token.txt da tela touch.</p>
-  <input id="tk" type="text" autocomplete="off" placeholder="cola o token">
-  <button class="b" id="tkok">Entrar</button>
+  <input id="tk" type="text" inputmode="none" autocomplete="off" placeholder="toca nos numeros">
+  <div id="keys"></div>
+  <button class="b" id="tkok" style="width:100%;font-size:20px">Entrar</button>
 </div></div>
 
 <script>
@@ -113,6 +117,16 @@ function toast(t, ruim) {
 }
 
 function pedirToken() { $('#modal').classList.add('show'); }
+['1','2','3','4','5','6','7','8','9','Apagar','0','Limpar'].forEach(k => {
+  const b = document.createElement('button');
+  b.textContent = k;
+  if (k === 'Apagar' || k === 'Limpar') b.style.fontSize = '15px';
+  b.onclick = () => {
+    const i = $('#tk');
+    i.value = k === 'Apagar' ? i.value.slice(0, -1) : k === 'Limpar' ? '' : i.value + k;
+  };
+  $('#keys').appendChild(b);
+});
 $('#tkok').onclick = () => {
   TOKEN = $('#tk').value.trim();
   try { localStorage.setItem('tk', TOKEN); } catch (e) {}
