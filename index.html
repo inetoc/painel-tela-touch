@@ -20,7 +20,19 @@ h2{font-size:16px;margin:22px 0 10px;color:var(--mut)}
 .card:active{transform:scale(.97)}
 .card b{display:block;font-size:17px;margin-bottom:4px}
 .card span{font-size:13px;opacity:.9}
-.ok{background:var(--ok)}.bad{background:var(--bad)}.neutral{background:var(--neu)}
+.ok{background:linear-gradient(135deg,#1e8c5a,#2bc07a)}.bad{background:linear-gradient(135deg,#aa3246,#e8506a)}.neutral{background:linear-gradient(135deg,#3c376e,#5f57b3)}
+.card{box-shadow:0 6px 18px #0006}
+.ic{display:block;font-size:34px;line-height:1;margin-bottom:8px}
+h2{display:flex;align-items:center;gap:8px;font-size:17px;margin:26px 0 12px;color:var(--txt)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 6px 18px #0004}
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.mt b{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;letter-spacing:.4px}
+.mt .v{font-size:20px;font-weight:800}
+.mt .tr{height:8px;border-radius:6px;background:#0a0818;margin-top:6px;overflow:hidden}
+.mt .tr i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),#fff8);transition:width .6s}
+.big{font-size:22px;padding:14px 20px}
+input[type=range]{width:100%;accent-color:var(--acc);height:34px}
+#shot{display:none;width:100%;border-radius:12px;margin-top:10px;border:1px solid var(--line)}
 textarea{width:100%;height:170px;background:#07060f;color:#cfe3ff;border:1px solid var(--line);border-radius:12px;padding:12px;font:13px ui-monospace,Consolas,monospace;resize:vertical}
 .row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
 button.b{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer}
@@ -57,18 +69,38 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
 
 <div class="grid" id="grid"></div>
 
-<h2>Texto ao vivo na tela touch</h2>
+<h2>&#128172; Texto ao vivo na tela touch</h2>
 <textarea id="txt" style="height:90px;font:16px system-ui" placeholder="Escreve aqui e aperta Enviar (Ctrl+Enter). Antes, toca no card Tela de texto pra abrir la."></textarea>
 <div class="row"><button class="b" id="env">Enviar</button><button class="b alt" id="envl">Limpar la</button></div>
 
-<h2>Mouse da tela touch</h2>
+<h2>&#128202; Status da tela touch</h2>
+<div class="box"><div class="meters" id="sis"><div class="mt"><b>carregando...</b></div></div></div>
+
+<h2>&#127911; Som, midia e brilho</h2>
+<div class="box">
+  <div class="row" style="margin-top:0">
+    <button class="b alt big" data-k="vol_down">&#128265;</button>
+    <button class="b alt big" data-k="vol_up">&#128266;</button>
+    <button class="b alt big" data-k="mute">&#128263;</button>
+    <button class="b alt big" data-k="prev">&#9198;&#65039;</button>
+    <button class="b alt big" data-k="play">&#9199;&#65039;</button>
+    <button class="b alt big" data-k="next">&#9197;&#65039;</button>
+  </div>
+  <div class="row"><span style="font-size:22px">&#9728;&#65039;</span><input type="range" id="bri" min="5" max="100" value="70" style="flex:1"></div>
+</div>
+
+<h2>&#128248; Ver a tela touch</h2>
+<div class="row" style="margin-top:0"><button class="b" id="foto">&#128248; Tirar foto da tela</button></div>
+<img id="shot" alt="captura da tela touch">
+
+<h2>&#128433;&#65039; Mouse da tela touch</h2>
 <div id="pad">Arrasta aqui pra mover o mouse da tela touch. Toque rapido = clique.</div>
 <div class="row">
   <button class="b alt" id="mE">Esquerdo</button><button class="b alt" id="mD">Direito</button><button class="b alt" id="m2">Duplo</button>
   <button class="b alt" id="mA">Arrastar: off</button><button class="b alt" id="sU">Rolar &#9650;</button><button class="b alt" id="sD">Rolar &#9660;</button>
 </div>
 
-<h2>Rodar PowerShell na tela touch</h2>
+<h2>&#9881;&#65039; Rodar PowerShell na tela touch</h2>
 <div class="chips" id="presets"></div>
 <textarea id="ps" placeholder="Cola aqui o script PowerShell. Ele roda NA TELA TOUCH, como administrador."></textarea>
 <div class="row">
@@ -79,14 +111,14 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
 <div id="bar"><div id="barf"></div></div>
 <pre id="out">A saida aparece aqui.</pre>
 
-<h2>Avancado</h2>
+<h2>&#128295; Avancado</h2>
 <details id="det"><summary>Lista de dispositivos de entrada (teclado, mouse, toque)</summary>
   <table id="devs"></table>
 </details>
 
 <div id="toast"></div>
 <div id="modal"><div>
-  <b>Token do painel</b>
+  <b id="mtit">&#128273; Token do painel</b>
   <p style="color:#9a96c4;font-size:13px;margin-top:6px">Esta no arquivo C:\prisma\painel\token.txt da tela touch.</p>
   <input id="tk" type="text" inputmode="none" autocomplete="off" placeholder="toca nos numeros">
   <div id="keys"></div>
@@ -102,6 +134,7 @@ $('#tit').innerHTML = LOCAL ? '&#128421; Tela touch (aqui)' : '&#128279; Control
 document.title = LOCAL ? 'AQUI - Tela touch' : 'REMOTO - Tela touch';
 $('#tc').content = LOCAL ? '#d98a1a' : '#1a9ad9';
 let TOKEN = '';
+let NOVO = false;
 try { TOKEN = localStorage.getItem('tk') || ''; } catch (e) {}
 if (location.hash.length > 1) {
   TOKEN = decodeURIComponent(location.hash.slice(1));
@@ -127,7 +160,14 @@ function pedirToken() { $('#modal').classList.add('show'); }
   };
   $('#keys').appendChild(b);
 });
-$('#tkok').onclick = () => {
+$('#tkok').onclick = async () => {
+  if (NOVO) {
+    const t = $('#tk').value.trim(); NOVO = false;
+    $('#modal').classList.remove('show'); $('#mtit').textContent = 'Token do painel';
+    try { const r = await api('token', { t }); toast(r.msg, r.ok === false); if (r.ok) { TOKEN = t; try { localStorage.setItem('tk', t); } catch (e) {} setTimeout(() => location.reload(), 8000); } }
+    catch (e) { toast(String(e.message || e), true); }
+    return;
+  }
   TOKEN = $('#tk').value.trim();
   try { localStorage.setItem('tk', TOKEN); } catch (e) {}
   $('#modal').classList.remove('show');
@@ -155,18 +195,21 @@ async function enviar(t) {
 $('#env').onclick = () => enviar($('#txt').value);
 $('#envl').onclick = () => { $('#txt').value = ''; enviar(''); };
 $('#txt').addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') enviar($('#txt').value); });
+const E = c => String.fromCodePoint(...c);
 const CARDS = [
-  { nome: 'Teclado fisico', f: s => s.teclado_bloqueado ? ['bad', 'BLOQUEADO (toca pra liberar)'] : ['ok', 'liberado (toca pra bloquear)'], go: () => api('acao', { nome: 'teclado' }) },
-  { nome: 'Touchpad', f: s => tri(s.touchpad), go: () => api('toggle', { tipo: 'touchpad' }) },
-  { nome: 'Touchscreen', f: s => tri(s.touchscreen), go: () => api('toggle', { tipo: 'touchscreen' }) },
-  { nome: 'Teclado na tela', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'osk' }) },
-  { nome: 'Tela de texto', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'abrir_tela' }) },
-  { nome: 'Atualizar painel', f: () => ['neutral', 'puxa a versao nova do GitHub'], go: async () => { const r = await api('acao', { nome: 'atualizar' }); if (r.ok) { toast('Reiniciando...'); setTimeout(() => location.reload(), 7000); } return r; } },
-  { nome: 'Apagar a tela', f: () => ['neutral', 'agora'], go: () => api('acao', { nome: 'tela_off' }) },
-  { nome: 'Nunca dormir', f: s => s.nunca_dormir ? ['ok', 'ATIVO (toca pra desativar)'] : ['neutral', 'desativado (toca pra ativar)'], go: () => api('acao', { nome: 'sono' }) },
-  { nome: 'Reativar tudo', f: () => ['neutral', 'teclado, touchpad e touch'], go: () => api('acao', { nome: 'reativar' }) },
-  { nome: 'Reiniciar', f: () => ['bad', ''], go: () => confirm('Reiniciar a tela touch?') ? api('acao', { nome: 'reiniciar' }) : null },
-  { nome: 'Desligar', f: () => ['bad', ''], go: () => confirm('Desligar a tela touch?') ? api('acao', { nome: 'desligar' }) : null }
+  { e: [0x2328, 0xFE0F], nome: 'Teclado fisico', f: s => s.teclado_bloqueado ? ['bad', 'BLOQUEADO (toca pra liberar)'] : ['ok', 'liberado (toca pra bloquear)'], go: () => api('acao', { nome: 'teclado' }) },
+  { e: [0x1F5B1, 0xFE0F], nome: 'Touchpad', f: s => tri(s.touchpad), go: () => api('toggle', { tipo: 'touchpad' }) },
+  { e: [0x1F446], nome: 'Touchscreen', f: s => tri(s.touchscreen), go: () => api('toggle', { tipo: 'touchscreen' }) },
+  { e: [0x1F524], nome: 'Teclado na tela', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'osk' }) },
+  { e: [0x1F4AC], nome: 'Tela de texto', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'abrir_tela' }) },
+  { e: [0x1F504], nome: 'Atualizar painel', f: () => ['neutral', 'puxa a versao nova do GitHub'], go: async () => { const r = await api('acao', { nome: 'atualizar' }); if (r.ok) { toast('Reiniciando...'); setTimeout(() => location.reload(), 7000); } return r; } },
+  { e: [0x1F501], nome: 'Reiniciar painel', f: () => ['neutral', 'so o painel, nao o PC'], go: async () => { const r = await api('acao', { nome: 'reiniciar_painel' }); if (r.ok) setTimeout(() => location.reload(), 7000); return r; } },
+  { e: [0x1F511], nome: 'Trocar token', f: () => ['neutral', 'digita o novo no teclado numerico'], go: () => { NOVO = true; $('#mtit').textContent = 'Novo token (4 a 32 numeros)'; $('#tk').value = ''; pedirToken(); } },
+  { e: [0x1F319], nome: 'Apagar a tela', f: () => ['neutral', 'agora'], go: () => api('acao', { nome: 'tela_off' }) },
+  { e: [0x2615], nome: 'Nunca dormir', f: s => s.nunca_dormir ? ['ok', 'ATIVO (toca pra desativar)'] : ['neutral', 'desativado (toca pra ativar)'], go: () => api('acao', { nome: 'sono' }) },
+  { e: [0x267B, 0xFE0F], nome: 'Reativar tudo', f: () => ['neutral', 'teclado, touchpad e touch'], go: () => api('acao', { nome: 'reativar' }) },
+  { e: [0x1F501], nome: 'Reiniciar PC', f: () => ['bad', 'reinicia a tela touch'], go: () => confirm('Reiniciar a tela touch?') ? api('acao', { nome: 'reiniciar' }) : null },
+  { e: [0x1F50C], nome: 'Desligar PC', f: () => ['bad', 'desliga a tela touch'], go: () => confirm('Desligar a tela touch?') ? api('acao', { nome: 'desligar' }) : null }
 ];
 
 let ST = {};
@@ -177,7 +220,7 @@ function desenhar() {
     const [cls, txt] = c.f(ST);
     const b = document.createElement('button');
     b.className = 'card ' + cls;
-    b.innerHTML = '<b>' + c.nome + '</b><span>' + txt + '</span>';
+    b.innerHTML = '<span class="ic">' + E(c.e) + '</span><b>' + c.nome + '</b><span>' + txt + '</span>';
     b.onclick = async () => {
       try {
         const r = await c.go();
@@ -263,6 +306,34 @@ $('#det').addEventListener('toggle', async () => {
     $('#devs').innerHTML = '<tr><td>Erro: ' + (e.message || e) + '</td></tr>';
   }
 });
+
+// ---- status, som/brilho, foto ----
+function medidor(t, v, pct, extra) { return '<div class="mt"><b>' + t + '</b><div class="v">' + v + '</div><div class="tr"><i style="width:' + (pct || 0) + '%"></i></div>' + (extra ? '<div style="font-size:12px;color:var(--mut);margin-top:4px">' + extra + '</div>' : '') + '</div>'; }
+async function sistema() {
+  if (document.hidden) return;
+  try {
+    const r = await api('sistema'); let h = '';
+    h += medidor('&#129504; CPU', r.cpu == null ? '...' : r.cpu + '%', r.cpu);
+    h += medidor('&#128190; MEMORIA', r.ram_pct + '%', r.ram_pct, r.ram_livre + ' de ' + r.ram_total + ' GB livres');
+    (r.discos || []).forEach(d => { const u = Math.round(100 * (d.total - d.livre) / d.total); h += medidor('&#128191; DISCO ' + d.l + ':', d.livre + ' GB livres', u, 'de ' + d.total + ' GB'); });
+    const m = r.uptime_min; h += medidor('&#9201;&#65039; LIGADA HA', m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min', 0);
+    $('#sis').innerHTML = h;
+  } catch (e) {}
+}
+setInterval(sistema, 3000); sistema();
+document.querySelectorAll('[data-k]').forEach(b => { b.onclick = () => api('tecla', { k: b.dataset.k }).catch(e => toast(String(e.message || e), true)); });
+let briT = null;
+$('#bri').oninput = () => { clearTimeout(briT); briT = setTimeout(async () => { try { const r = await api('brilho', { n: +$('#bri').value }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); } }, 350); };
+$('#foto').onclick = async () => {
+  $('#foto').disabled = true; toast('Tirando foto...');
+  try {
+    const r = await fetch('/api/shot', { headers: { 'X-Token': TOKEN } });
+    if (r.status === 401) { pedirToken(); throw new Error('token errado'); }
+    if (!r.ok) throw new Error('falhou (' + r.status + ')');
+    const u = URL.createObjectURL(await r.blob()); $('#shot').src = u; $('#shot').style.display = 'block';
+  } catch (e) { toast(String(e.message || e), true); }
+  $('#foto').disabled = false;
+};
 
 // ---- mouse remoto ----
 let pdx = 0, pdy = 0, enviando = false, arrasta = false;

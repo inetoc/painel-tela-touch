@@ -181,6 +181,12 @@ REPO = 'inetoc/painel-tela-touch'
 ARQS = ('server.py', 'index.html', 'hook.ps1')
 
 
+def relancar():
+    cmd = 'ping -n 4 127.0.0.1 >nul & "' + sys.executable + '" "' + os.path.join(BASE, 'server.py') + '"'
+    subprocess.Popen(['cmd', '/c', cmd], creationflags=0x00000008 | 0x00000200 | NOWIN, close_fds=True)
+    threading.Timer(1.0, lambda: os._exit(0)).start()
+
+
 def atualizar():
     import urllib.request
     novos = {}
@@ -205,15 +211,17 @@ def atualizar():
         with open(dest, 'wb') as f:
             f.write(novos[a])
     log('atualizado do GitHub, reiniciando')
-    cmd = 'ping -n 4 127.0.0.1 >nul & "' + sys.executable + '" "' + os.path.join(BASE, 'server.py') + '"'
-    subprocess.Popen(['cmd', '/c', cmd], creationflags=0x00000008 | 0x00000200 | NOWIN, close_fds=True)
-    threading.Timer(1.0, lambda: os._exit(0)).start()
+    relancar()
     return {'ok': True, 'msg': 'atualizado, reiniciando o painel...'}
 
 
 def acao(nome):
     if nome == 'teclado':
         return {'ok': True, 'msg': hook_toggle()}
+    if nome == 'reiniciar_painel':
+        log('reiniciar_painel pedido')
+        relancar()
+        return {'ok': True, 'msg': 'reiniciando o painel (uns 6 segundos)...'}
     if nome == 'osk':
         subprocess.Popen(['osk.exe'])
         return {'ok': True, 'msg': 'teclado na tela aberto'}
@@ -254,6 +262,104 @@ def acao(nome):
 
 
 MSG = {'t': ''}
+_cpu = {'v': None}
+
+
+class _FT(ctypes.Structure):
+    _fields_ = [('lo', ctypes.wintypes.DWORD), ('hi', ctypes.wintypes.DWORD)]
+
+
+class _MEM(ctypes.Structure):
+    _fields_ = [('len', ctypes.wintypes.DWORD), ('load', ctypes.wintypes.DWORD),
+                ('tot', ctypes.c_ulonglong), ('av', ctypes.c_ulonglong),
+                ('ptot', ctypes.c_ulonglong), ('pav', ctypes.c_ulonglong),
+                ('vtot', ctypes.c_ulonglong), ('vav', ctypes.c_ulonglong), ('ext', ctypes.c_ulonglong)]
+
+
+def sistema():
+    import shutil
+    k = ctypes.windll.kernel32
+    i, ke, us = _FT(), _FT(), _FT()
+    k.GetSystemTimes(ctypes.byref(i), ctypes.byref(ke), ctypes.byref(us))
+    idle = (i.hi << 32) | i.lo
+    tot = ((ke.hi << 32) | ke.lo) + ((us.hi << 32) | us.lo)
+    ult = _cpu['v']
+    _cpu['v'] = (idle, tot)
+    cpu = None
+    if ult and tot - ult[1] > 0:
+        cpu = max(0, min(100, round(100 * (1 - (idle - ult[0]) / (tot - ult[1])))))
+    m = _MEM()
+    m.len = ctypes.sizeof(m)
+    k.GlobalMemoryStatusEx(ctypes.byref(m))
+    discos = []
+    for L in 'CD':
+        try:
+            d = shutil.disk_usage(L + ':\\')
+            discos.append({'l': L, 'livre': round(d.free / 2**30), 'total': round(d.total / 2**30)})
+        except Exception:
+            pass
+    k.GetTickCount64.restype = ctypes.c_ulonglong
+    return {'cpu': cpu, 'ram_pct': m.load, 'ram_livre': round(m.av / 2**30, 1), 'ram_total': round(m.tot / 2**30, 1),
+            'discos': discos, 'uptime_min': int(k.GetTickCount64() / 60000)}
+
+
+_VK = {'vol_up': 0xAF, 'vol_down': 0xAE, 'mute': 0xAD, 'play': 0xB3, 'next': 0xB0, 'prev': 0xB1}
+
+
+def tecla(d):
+    vk = _VK.get(d.get('k'))
+    if not vk:
+        return {'ok': False, 'msg': 'tecla desconhecida'}
+    for _ in range(max(1, min(5, int(d.get('n', 1))))):
+        ctypes.windll.user32.keybd_event(vk, 0, 0, 0)
+        ctypes.windll.user32.keybd_event(vk, 0, 2, 0)
+    return {'ok': True}
+
+
+def brilho(d):
+    n = max(0, min(100, int(d.get('n', 50))))
+    out, rc = run_ps("(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1, " + str(n) + ")", 20)
+    return {'ok': rc == 0, 'msg': ('brilho ' + str(n) + '%') if rc == 0 else ('nao deu: ' + out.strip()[:120])}
+
+
+PS_SHOT = r"""
+Add-Type -AssemblyName System.Windows.Forms,System.Drawing
+Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware();' -Name D -Namespace W
+[W.D]::SetProcessDPIAware() | Out-Null
+$b = [System.Windows.Forms.SystemInformation]::VirtualScreen
+$bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+$g = [System.Drawing.Graphics]::FromImage($bmp)
+$g.CopyFromScreen($b.Left, $b.Top, 0, 0, $bmp.Size)
+$bmp.Save('@@P@@', [System.Drawing.Imaging.ImageFormat]::Jpeg)
+"""
+
+
+def shot():
+    fd, path = tempfile.mkstemp(suffix='.jpg', dir=BASE)
+    os.close(fd)
+    try:
+        out, rc = run_ps(PS_SHOT.replace('@@P@@', path), 30)
+        with open(path, 'rb') as f:
+            data = f.read()
+        if len(data) < 500:
+            raise RuntimeError('captura vazia: ' + out.strip()[:200])
+        return data
+    finally:
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+
+def trocar_token(d):
+    t = str(d.get('t', ''))
+    if not re.match(r'^[A-Za-z0-9]{4,32}$', t):
+        return {'ok': False, 'msg': 'token precisa ter 4 a 32 letras/numeros'}
+    with open(TOKEN_FILE, 'w') as f:
+        f.write(t)
+    log('token trocado, reiniciando')
+    relancar()
+    return {'ok': True, 'msg': 'token trocado, reiniciando o painel...'}
 
 
 def mouse(d):
@@ -333,6 +439,14 @@ class H(BaseHTTPRequestHandler):
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
                 self._send(200, {'t': MSG['t']})
+            elif rota == '/api/sistema':
+                if not self._auth():
+                    return self._send(401, {'erro': 'token errado'})
+                self._send(200, sistema())
+            elif rota == '/api/shot':
+                if not self._auth():
+                    return self._send(401, {'erro': 'token errado'})
+                self._send(200, shot(), 'image/jpeg')
             elif rota == '/api/status':
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
@@ -372,6 +486,12 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, toggle(d.get('tipo')))
             elif rota == '/api/acao':
                 self._send(200, acao(d.get('nome')))
+            elif rota == '/api/tecla':
+                self._send(200, tecla(d))
+            elif rota == '/api/brilho':
+                self._send(200, brilho(d))
+            elif rota == '/api/token':
+                self._send(200, trocar_token(d))
             elif rota == '/api/mouse':
                 self._send(200, mouse(d))
             elif rota == '/api/dev':
