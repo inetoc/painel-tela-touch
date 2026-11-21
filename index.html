@@ -196,7 +196,7 @@ $('#tkok').onclick = async () => {
   if (NOVO) {
     const t = $('#tk').value.trim(); NOVO = false;
     $('#modal').classList.remove('show'); $('#mtit').textContent = 'Token do painel';
-    try { const r = await api('token', { t }); toast(r.msg, r.ok === false); if (r.ok) { TOKEN = t; try { localStorage.setItem('tk', t); } catch (e) {} setTimeout(() => location.reload(), 8000); } }
+    try { const r = await api('token', { t }); toast(r.msg, r.ok === false); if (r.ok) { TOKEN = t; try { localStorage.setItem('tk', t); } catch (e) {} esperarPainel(); } }
     catch (e) { toast(String(e.message || e), true); }
     return;
   }
@@ -216,6 +216,15 @@ async function api(rota, corpo) {
   return r.json();
 }
 
+async function esperarPainel() {
+  const t0 = Date.now(); let caiu = false;
+  toast('Reiniciando o painel, espera...');
+  while (Date.now() - t0 < 45000) {
+    await new Promise(r => setTimeout(r, 1000));
+    try { const r = await fetch('/api/status', { headers: { 'X-Token': TOKEN }, cache: 'no-store' }); if (r.ok && (caiu || Date.now() - t0 > 6000)) { location.reload(); return; } } catch (e) { caiu = true; }
+  }
+  toast('O painel nao voltou em 45 s. Veja o painel.log.', true);
+}
 const tri = v => v === 'on' ? ['ok', 'LIGADO (toca pra desligar)']
   : v === 'off' ? ['bad', 'DESLIGADO (toca pra ligar)']
   : ['neutral', 'nao encontrado (usa a lista avancada)'];
@@ -235,8 +244,8 @@ const CARDS = [
   { e: [0x1F524], nome: 'Teclado na tela', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'osk' }) },
   { e: [0x1F4AC], nome: 'Tela de texto', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'abrir_tela' }) },
   { e: [0x1F5BC, 0xFE0F], nome: 'Kiosk', f: () => ['neutral', 'relogio, clima e projetos na tela touch'], go: () => api('acao', { nome: 'abrir_kiosk' }) },
-  { e: [0x1F504], nome: 'Atualizar painel', f: () => ['neutral', 'puxa a versao nova do GitHub'], go: async () => { const r = await api('acao', { nome: 'atualizar' }); if (r.ok) { toast('Reiniciando...'); setTimeout(() => location.reload(), 7000); } return r; } },
-  { e: [0x1F501], nome: 'Reiniciar painel', f: () => ['neutral', 'so o painel, nao o PC'], go: async () => { const r = await api('acao', { nome: 'reiniciar_painel' }); if (r.ok) setTimeout(() => location.reload(), 7000); return r; } },
+  { e: [0x1F504], nome: 'Atualizar painel', f: () => ['neutral', 'puxa a versao nova do GitHub'], go: async () => { const r = await api('acao', { nome: 'atualizar' }); if (r.ok) esperarPainel(); return r; } },
+  { e: [0x1F501], nome: 'Reiniciar painel', f: () => ['neutral', 'so o painel, nao o PC'], go: async () => { const r = await api('acao', { nome: 'reiniciar_painel' }); if (r.ok) esperarPainel(); return r; } },
   { e: [0x1F511], nome: 'Trocar token', f: () => ['neutral', 'digita o novo no teclado numerico'], go: () => { NOVO = true; $('#mtit').textContent = 'Novo token (4 a 32 numeros)'; $('#tk').value = ''; pedirToken(); } },
   { e: [0x1F319], nome: 'Apagar a tela', f: () => ['neutral', 'agora'], go: () => api('acao', { nome: 'tela_off' }) },
   { e: [0x2615], nome: 'Nunca dormir', f: s => s.nunca_dormir ? ['ok', 'ATIVO (toca pra desativar)'] : ['neutral', 'desativado (toca pra ativar)'], go: () => api('acao', { nome: 'sono' }) },

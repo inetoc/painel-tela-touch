@@ -199,20 +199,34 @@ def relancar():
         return False, 'erro no reinicio: ' + str(e)
 
 
-def atualizar():
-    import urllib.request
-    novos = {}
-    for a in ARQS:
-        rq = urllib.request.Request('https://api.github.com/repos/' + REPO + '/contents/' + a,
-                                    headers={'Accept': 'application/vnd.github.raw', 'User-Agent': 'painel-tela-touch'})
-        with urllib.request.urlopen(rq, timeout=25) as r:
-            novos[a] = r.read()
-        if len(novos[a]) < 200:
-            return {'ok': False, 'msg': 'arquivo vazio/estranho: ' + a}
+def _gh(url, accept='application/vnd.github.raw'):
+    import urllib.request, urllib.error
+    rq = urllib.request.Request(url, headers={'Accept': accept, 'User-Agent': 'painel-tela-touch', 'Cache-Control': 'no-cache'})
     try:
+        with urllib.request.urlopen(rq, timeout=25) as r:
+            return r.read()
+    except urllib.error.HTTPError as e:
+        raise RuntimeError('GitHub respondeu HTTP ' + str(e.code) + (' (limite do GitHub, tenta em alguns minutos)' if e.code in (403, 429) else ''))
+    except Exception as e:
+        raise RuntimeError('sem acesso ao GitHub: ' + str(e))
+
+
+def atualizar():
+    api = 'https://api.github.com/repos/' + REPO
+    novos = {}
+    try:
+        # pega o SHA do commit mais novo (cache-buster na URL) e baixa os arquivos exatamente dele
+        sha = _gh(api + '/commits/main?cb=' + str(int(time.time())), 'application/vnd.github.sha').decode('utf-8', 'replace').strip()
+        if not re.match(r'^[0-9a-f]{40}$', sha):
+            raise RuntimeError('resposta estranha do GitHub')
+        for a in ARQS:
+            novos[a] = _gh(api + '/contents/' + a + '?ref=' + sha)
+            if len(novos[a]) < 200:
+                raise RuntimeError('arquivo vazio/estranho: ' + a)
         compile(novos['server.py'].decode('utf-8'), 'server.py', 'exec')
     except Exception as e:
-        return {'ok': False, 'msg': 'server.py novo com erro, nao apliquei: ' + str(e)}
+        log('atualizar falhou: ' + str(e))
+        return {'ok': False, 'msg': 'nao atualizou: ' + str(e)}
     for a in ARQS:
         dest = os.path.join(BASE, a)
         if os.path.exists(dest):
@@ -222,12 +236,12 @@ def atualizar():
                 pass
         with open(dest, 'wb') as f:
             f.write(novos[a])
-    log('atualizado do GitHub, reiniciando')
+    log('atualizado do GitHub (' + sha[:7] + '), reiniciando')
     ok, erro = relancar()
     if not ok:
         log(erro)
-        return {'ok': False, 'msg': 'arquivos atualizados, mas nao reiniciou: ' + erro}
-    return {'ok': True, 'msg': 'atualizado, reiniciando o painel...'}
+        return {'ok': False, 'msg': 'arquivos atualizados (' + sha[:7] + '), mas nao reiniciou: ' + erro}
+    return {'ok': True, 'msg': 'atualizado pra ' + sha[:7] + ', reiniciando o painel...'}
 
 
 def acao(nome):
