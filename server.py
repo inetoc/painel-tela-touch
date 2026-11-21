@@ -182,9 +182,21 @@ ARQS = ('server.py', 'index.html', 'hook.ps1')
 
 
 def relancar():
-    cmd = 'ping -n 4 127.0.0.1 >nul & "' + sys.executable + '" "' + os.path.join(BASE, 'server.py') + '"'
-    subprocess.Popen(['cmd', '/c', cmd], creationflags=0x00000008 | 0x00000200 | NOWIN, close_fds=True)
-    threading.Timer(1.0, lambda: os._exit(0)).start()
+    # O Agendador mata tudo que o painel inicia quando a tarefa termina. Entao o reinicio roda
+    # numa tarefa propria (PainelReinicio), fora dessa arvore: ela encerra e liga a PainelNotebook.
+    cmd = ('cmd /c ping -n 3 127.0.0.1 >nul & schtasks /end /tn PainelNotebook'
+           ' & ping -n 3 127.0.0.1 >nul & schtasks /run /tn PainelNotebook')
+    try:
+        r = subprocess.run(['schtasks', '/create', '/tn', 'PainelReinicio', '/tr', cmd, '/sc', 'once',
+                            '/st', '00:00', '/rl', 'HIGHEST', '/f'], capture_output=True, creationflags=NOWIN, timeout=30)
+        if r.returncode != 0:
+            return False, 'nao criei a tarefa de reinicio: ' + (r.stdout + r.stderr).decode('cp850', 'replace').strip()[:200]
+        r = subprocess.run(['schtasks', '/run', '/tn', 'PainelReinicio'], capture_output=True, creationflags=NOWIN, timeout=30)
+        if r.returncode != 0:
+            return False, 'nao consegui rodar a tarefa de reinicio: ' + (r.stdout + r.stderr).decode('cp850', 'replace').strip()[:200]
+        return True, ''
+    except Exception as e:
+        return False, 'erro no reinicio: ' + str(e)
 
 
 def atualizar():
@@ -211,7 +223,10 @@ def atualizar():
         with open(dest, 'wb') as f:
             f.write(novos[a])
     log('atualizado do GitHub, reiniciando')
-    relancar()
+    ok, erro = relancar()
+    if not ok:
+        log(erro)
+        return {'ok': False, 'msg': 'arquivos atualizados, mas nao reiniciou: ' + erro}
     return {'ok': True, 'msg': 'atualizado, reiniciando o painel...'}
 
 
@@ -220,8 +235,8 @@ def acao(nome):
         return {'ok': True, 'msg': hook_toggle()}
     if nome == 'reiniciar_painel':
         log('reiniciar_painel pedido')
-        relancar()
-        return {'ok': True, 'msg': 'reiniciando o painel (uns 6 segundos)...'}
+        ok, erro = relancar()
+        return {'ok': ok, 'msg': 'reiniciando o painel (uns 8 segundos)...' if ok else erro}
     if nome == 'osk':
         subprocess.Popen(['osk.exe'])
         return {'ok': True, 'msg': 'teclado na tela aberto'}
@@ -358,8 +373,8 @@ def trocar_token(d):
     with open(TOKEN_FILE, 'w') as f:
         f.write(t)
     log('token trocado, reiniciando')
-    relancar()
-    return {'ok': True, 'msg': 'token trocado, reiniciando o painel...'}
+    ok, erro = relancar()
+    return {'ok': ok, 'msg': 'token trocado, reiniciando o painel...' if ok else 'token gravado, mas nao reiniciou: ' + erro}
 
 
 def mouse(d):
