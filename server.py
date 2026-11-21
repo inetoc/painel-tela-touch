@@ -720,6 +720,74 @@ def monitor_parar():
     return {'ok': True, 'msg': 'monitor extra encerrado'}
 
 
+SOM_CFG = os.path.join(BASE, 'som.json')
+SOM_PORTA = 8778
+
+
+def som_cfg():
+    try:
+        with open(SOM_CFG, encoding='utf-8') as f:
+            c = json.load(f)
+    except Exception:
+        c = {}
+    return {'host': str(c.get('host', ''))[:100], 'token': str(c.get('token', ''))[:100]}
+
+
+def som_cfg_publico():
+    c = som_cfg()
+    return {'host': c['host'], 'tem_token': bool(c['token'])}
+
+
+def som_salvar(d):
+    c = som_cfg()
+    host = str(d.get('host', c['host'])).strip()
+    if host and not re.match(r'^[A-Za-z0-9.\-]{1,100}$', host):
+        return {'ok': False, 'msg': 'endereco invalido'}
+    tk = str(d.get('token', '')).strip()
+    if tk and tk != MASK:
+        c['token'] = tk[:100]
+    c['host'] = host
+    with open(SOM_CFG, 'w', encoding='utf-8') as f:
+        json.dump(c, f, ensure_ascii=True)
+    return {'ok': True, 'msg': 'som salvo'}
+
+
+def som_chamar(caminho, corpo=None):
+    import urllib.request, urllib.error
+    c = som_cfg()
+    if not c['host'] or not c['token']:
+        return {'ok': False, 'erro': 'configure o endereco e o token do agente de som'}
+    hs = {'X-Token': c['token'], 'User-Agent': 'painel-tela-touch'}
+    data = None
+    if corpo is not None:
+        data = json.dumps(corpo).encode('utf-8')
+        hs['Content-Type'] = 'application/json'
+    try:
+        rq = urllib.request.Request('http://' + c['host'] + ':' + str(SOM_PORTA) + caminho, data=data, headers=hs,
+                                    method='POST' if corpo is not None else 'GET')
+        try:
+            with urllib.request.urlopen(rq, timeout=25) as r:
+                return json.loads(r.read().decode('utf-8'))
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                return {'ok': False, 'erro': 'token do agente de som errado'}
+            return {'ok': False, 'erro': 'agente respondeu HTTP ' + str(e.code)}
+    except Exception as e:
+        return {'ok': False, 'erro': 'agente de som fora do ar: ' + str(e)[:150]}
+
+
+def som_acao(d):
+    a = d.get('acao')
+    rotas = {'padrao': '/api/padrao', 'volume': '/api/volume', 'mudo': '/api/mudo'}
+    if a not in rotas:
+        return {'ok': False, 'msg': 'acao desconhecida'}
+    corpo = {k: d[k] for k in ('id', 'tipo', 'n', 'on') if k in d}
+    r = som_chamar(rotas[a], corpo)
+    if 'erro' in r and 'msg' not in r:
+        r['msg'] = r['erro']
+    return r
+
+
 def trocar_token(d):
     t = str(d.get('t', ''))
     if not re.match(r'^[A-Za-z0-9]{4,32}$', t):
@@ -826,6 +894,14 @@ class H(BaseHTTPRequestHandler):
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
                 self._send(200, monitor_status())
+            elif rota == '/api/somcfg':
+                if not self._auth():
+                    return self._send(401, {'erro': 'token errado'})
+                self._send(200, som_cfg_publico())
+            elif rota == '/api/som':
+                if not self._auth():
+                    return self._send(401, {'erro': 'token errado'})
+                self._send(200, som_chamar('/api/dispositivos'))
             elif rota == '/api/clip':
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
@@ -885,6 +961,10 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, macro_exec(d))
             elif rota == '/api/monitorcfg':
                 self._send(200, monitor_salvar(d))
+            elif rota == '/api/somcfg':
+                self._send(200, som_salvar(d))
+            elif rota == '/api/somacao':
+                self._send(200, som_acao(d))
             elif rota == '/api/url':
                 self._send(200, abrir_url(d))
             elif rota == '/api/upload':

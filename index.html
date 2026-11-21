@@ -104,6 +104,15 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
   <div id="mstat" style="margin-top:10px;font-size:14px;color:var(--mut)">...</div>
 </div>
 
+<h2>&#128266; Som do computador (microfone e fones)</h2>
+<div class="box">
+  <div id="somlist" style="color:var(--mut)">carregando...</div>
+  <div class="row"><button class="b alt" id="somrec">&#128260; Atualizar lista</button></div>
+  <details style="margin-top:12px"><summary>Conexao com o agente de som</summary>
+    <div class="row"><input id="somhost" type="text" placeholder="endereco do computador (IP Tailscale)" style="flex:1;min-width:180px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;font-size:15px"><input id="somtk" type="text" placeholder="token do agente" style="flex:1;min-width:140px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;font-size:15px"><button class="b" id="somsalva">&#128190; Salvar</button></div>
+  </details>
+</div>
+
 <h2>&#128444;&#65039; Configurar o kiosk</h2>
 <div class="box">
   <b style="font-size:13px;color:var(--mut)">&#127780;&#65039; CIDADE DO CLIMA <span id="kinfo"></span></b>
@@ -406,6 +415,36 @@ $('#msalva').onclick = async () => {
 };
 $('#mcpy').onclick = () => copiar($('#mout').textContent).then(() => toast('Resultado copiado'), e => toast('Nao consegui copiar', true));
 mLoad();
+
+// ---- som do computador ----
+async function somLoad() {
+  const box = $('#somlist');
+  try {
+    const c = await api('somcfg');
+    if (!$('#somhost').value) $('#somhost').value = c.host || '';
+    const r = await api('som');
+    if (r.erro) { box.textContent = r.erro; return; }
+    const dev = r.dispositivos || [];
+    let h = '';
+    [['saida', 'Playback', '&#127911; SAIDA (fone / alto-falante)'], ['entrada', 'Recording', '&#127908; ENTRADA (microfone)']].forEach(g => {
+      const lista = dev.filter(d => d.tipo === g[1]);
+      const est = r[g[0]] || {};
+      h += '<div style="margin-bottom:18px"><b style="font-size:13px;color:var(--mut)">' + g[2] + '</b>';
+      lista.forEach(d => { h += '<button class="card ' + (d.padrao ? 'ok' : 'neutral') + '" style="display:block;width:100%;margin-top:8px;min-height:60px" data-som="' + d.id.replace(/"/g, '') + '"><b></b><span>' + (d.padrao ? 'EM USO' : 'toca pra usar') + '</span></button>'; });
+      h += '<div class="row"><button class="b alt" data-vol="' + g[0] + '" data-d="-10">&#8722; 10</button><span style="align-self:center;min-width:70px;text-align:center;font-weight:800">' + (est.volume == null ? '?' : Math.round(est.volume) + '%') + '</span><button class="b alt" data-vol="' + g[0] + '" data-d="10">+ 10</button><button class="b alt" data-mudo="' + g[0] + '" data-on="' + (est.mudo ? 0 : 1) + '">' + (est.mudo ? 'Ligar som' : 'Mudo') + '</button></div></div>';
+    });
+    box.innerHTML = h;
+    box.querySelectorAll('[data-som]').forEach((b, i) => {
+      const d = dev.filter(x => x.id.replace(/"/g, '') === b.dataset.som)[0]; b.querySelector('b').textContent = d.nome;
+      b.onclick = async () => { const x = await api('somacao', { acao: 'padrao', id: d.id }); toast(x.msg || 'ok', x.ok === false); somLoad(); };
+    });
+    box.querySelectorAll('[data-vol]').forEach(b => { b.onclick = async () => { const t = b.dataset.vol, atual = (r[t] || {}).volume || 0; const x = await api('somacao', { acao: 'volume', tipo: t, n: Math.max(0, Math.min(100, Math.round(atual) + (+b.dataset.d))) }); toast(x.msg || 'ok', x.ok === false); somLoad(); }; });
+    box.querySelectorAll('[data-mudo]').forEach(b => { b.onclick = async () => { const x = await api('somacao', { acao: 'mudo', tipo: b.dataset.mudo, on: b.dataset.on === '1' }); toast(x.msg || 'ok', x.ok === false); somLoad(); }; });
+  } catch (e) { box.textContent = 'Erro: ' + (e.message || e); }
+}
+$('#somrec').onclick = somLoad;
+$('#somsalva').onclick = async () => { try { const r = await api('somcfg', { host: $('#somhost').value.trim(), token: $('#somtk').value.trim() }); toast(r.msg, r.ok === false); $('#somtk').value = ''; somLoad(); } catch (e) { toast(String(e.message || e), true); } };
+somLoad();
 
 // ---- monitor extra ----
 async function monLoad() {
