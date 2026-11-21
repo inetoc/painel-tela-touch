@@ -2,497 +2,516 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" id="tc" content="#0f0d1c">
 <title>Tela touch</title>
 <style>
-:root{--bg:#0f0d1c;--card:#1a1733;--line:#2e2a5a;--txt:#ece9ff;--mut:#9a96c4;--ok:#1e8c5a;--bad:#aa3246;--neu:#3c376e;--acc:#6e46c8}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;padding:18px;max-width:900px;margin:0 auto}
-header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
-h1{font-size:22px}
-h2{font-size:16px;margin:22px 0 10px;color:var(--mut)}
-.dot{width:12px;height:12px;border-radius:50%;background:#666}
-.dot.on{background:#3ddc97;box-shadow:0 0 8px #3ddc97}
-.dot.off{background:#ff5a6a}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
-.card{border:0;border-radius:14px;padding:18px;color:#fff;text-align:left;cursor:pointer;font:inherit;min-height:92px;transition:transform .12s}
-.card:active{transform:scale(.97)}
-.card b{display:block;font-size:17px;margin-bottom:4px}
-.card span{font-size:13px;opacity:.9}
-.ok{background:linear-gradient(135deg,#1e8c5a,#2bc07a)}.bad{background:linear-gradient(135deg,#aa3246,#e8506a)}.neutral{background:linear-gradient(135deg,#3c376e,#5f57b3)}
-.card{box-shadow:0 6px 18px #0006}
-.ic{display:block;font-size:34px;line-height:1;margin-bottom:8px}
-h2{display:flex;align-items:center;gap:8px;font-size:17px;margin:26px 0 12px;color:var(--txt)}
-.box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 6px 18px #0004}
-.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.mt b{display:block;font-size:12px;color:var(--mut);margin-bottom:4px;letter-spacing:.4px}
-.mt .v{font-size:20px;font-weight:800}
-.mt .tr{height:8px;border-radius:6px;background:#0a0818;margin-top:6px;overflow:hidden}
-.mt .tr i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),#fff8);transition:width .6s}
-.big{font-size:22px;padding:14px 20px}
-input[type=range]{width:100%;accent-color:var(--acc);height:34px}
-#shot{display:none;width:100%;border-radius:12px;margin-top:10px;border:1px solid var(--line)}
-textarea{width:100%;height:170px;background:#07060f;color:#cfe3ff;border:1px solid var(--line);border-radius:12px;padding:12px;font:13px ui-monospace,Consolas,monospace;resize:vertical}
-.row{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
-button.b{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:700;cursor:pointer}
-button.b.alt{background:var(--neu)}
-.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-.chip{background:var(--card);border:1px solid var(--line);color:var(--mut);padding:6px 12px;border-radius:99px;cursor:pointer;font-size:13px}
-pre{background:#07060f;border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;white-space:pre-wrap;word-break:break-word;font:12.5px ui-monospace,Consolas,monospace;min-height:60px;max-height:420px;overflow:auto}
-details{background:var(--card);border-radius:12px;padding:12px}
-summary{cursor:pointer;color:var(--mut)}
-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
-td,th{padding:6px;border-bottom:1px solid var(--line);text-align:left}
-#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#3ddc97;color:#04130c;padding:10px 18px;border-radius:99px;font-weight:700;opacity:0;transition:.25s;pointer-events:none;max-width:90%}
-#toast.show{opacity:1}#toast.err{background:#ff5a6a;color:#fff}
-#modal{position:fixed;inset:0;background:#000c;display:none;align-items:center;justify-content:center;padding:20px}
-#modal.show{display:flex}
-#modal div{background:var(--card);padding:22px;border-radius:14px;width:100%;max-width:380px}
-#keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
-#keys button{font:inherit;font-size:26px;font-weight:700;padding:16px 0;border:0;border-radius:12px;background:var(--neu);color:#fff;cursor:pointer}
-#keys button:active{background:var(--acc)}
-#modal input{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;margin:12px 0;font-size:16px}
-#bar{height:10px;background:#0a0818;border:1px solid #2a2550;border-radius:8px;margin:10px 0;overflow:hidden;display:none;position:relative}
-#barf{height:100%;width:0;background:linear-gradient(90deg,#6c3fd1,#9b7bff);transition:width .25s linear}
-#barp{font-size:12px;color:#9a96c4;margin-left:auto}
+:root{--bg:#0f0d1c;--card:#1a1733;--line:#2e2a5a;--txt:#ece9ff;--mut:#9a96c4;--acc:#6e46c8;--h:64px}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:18px}
+body{min-height:100vh;user-select:none;-webkit-user-select:none;touch-action:manipulation;overflow-x:hidden}
 body.local{--acc:#d98a1a;--bg:#1a1206}
 body.remoto{--acc:#1a9ad9;--bg:#06141f}
-#faixa{margin:-18px -18px 14px;padding:10px 18px;font-weight:800;font-size:14px;letter-spacing:.5px;color:#fff;background:var(--acc)}
-#pad{height:230px;border:2px dashed var(--acc);border-radius:14px;background:#07060f;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px;text-align:center;padding:10px}
+button{font:inherit;color:inherit;border:0;cursor:pointer;touch-action:manipulation}
+#faixa{padding:10px 16px;font-weight:800;font-size:15px;letter-spacing:.4px;color:#fff;background:var(--acc);text-align:center}
+#top{display:flex;align-items:center;gap:12px;padding:12px 16px;position:sticky;top:0;background:var(--bg);z-index:5;border-bottom:1px solid var(--line)}
+#back{min-width:var(--h);height:var(--h);border-radius:16px;background:var(--acc);color:#fff;font-size:34px;font-weight:800;line-height:1}
+#crumb{flex:1;font-size:15px;color:var(--mut);line-height:1.25}
+#crumb b{display:block;color:var(--txt);font-size:22px}
+.dot{width:16px;height:16px;border-radius:50%;background:#666;flex:none}
+.dot.on{background:#3ddc97;box-shadow:0 0 10px #3ddc97}.dot.off{background:#ff5a6a}
+#view{padding:16px;max-width:1100px;margin:0 auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.grid.home{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.tile{display:flex;align-items:center;gap:14px;text-align:left;width:100%;min-height:96px;padding:16px 18px;border-radius:20px;color:#fff;box-shadow:0 6px 18px #0006;transition:transform .1s,filter .1s;position:relative}
+.home .tile{min-height:150px;padding:20px}
+.tile:active{transform:scale(.96);filter:brightness(1.2)}
+.tile.busy{opacity:.6}
+.tile .ic{font-size:44px;line-height:1;flex:none}
+.home .tile .ic{font-size:56px}
+.tile .tx{flex:1;min-width:0}
+.tile b{display:block;font-size:21px}
+.tile small{display:block;font-size:14px;opacity:.88;margin-top:3px}
+.tile .ar{font-size:38px;font-weight:800;opacity:.9;flex:none}
+.ok{background:linear-gradient(135deg,#1e8c5a,#2bc07a)}.bad{background:linear-gradient(135deg,#aa3246,#e8506a)}
+.neutral{background:linear-gradient(135deg,#3c376e,#5f57b3)}.acc{background:linear-gradient(135deg,var(--acc),#fff3)}
+.tile.sel{outline:4px solid #fff}
+.tile.mini{min-height:64px;padding:10px 16px;justify-content:center;text-align:center;border-radius:16px}
+.tile.mini b{font-size:20px}
+h2{font-size:19px;margin:24px 0 12px;display:flex;gap:8px;align-items:center}
+.box{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;box-shadow:0 6px 18px #0004}
+.meters{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.mt b{display:block;font-size:13px;color:var(--mut);letter-spacing:.4px}
+.mt .v{font-size:28px;font-weight:800;margin-top:2px}
+.mt .tr{height:12px;border-radius:8px;background:#0a0818;margin-top:8px;overflow:hidden}
+.mt .tr i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),#fff8);transition:width .6s}
+.mt .ex{font-size:13px;color:var(--mut);margin-top:6px}
+.row{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+.row>*{flex:1;min-width:110px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.lin{display:flex;gap:10px;align-items:stretch;margin-bottom:12px}
+.lin .tile:first-child{flex:1}.lin .tile.mini{flex:none;width:76px}
+pre{background:#07060f;border:1px solid var(--line);border-radius:16px;padding:14px;white-space:pre-wrap;word-break:break-word;font:14px ui-monospace,Consolas,monospace;min-height:80px;max-height:55vh;overflow:auto;user-select:text;-webkit-user-select:text}
+.vazio{color:var(--mut);padding:18px;text-align:center;border:2px dashed var(--line);border-radius:18px}
+#pad{height:calc(100vh - 330px);min-height:240px;border:3px dashed var(--acc);border-radius:20px;background:#07060f;touch-action:none;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:17px;text-align:center;padding:14px}
 #pad.on{background:#120f26}
+#shot{width:100%;border-radius:16px;margin-top:14px;border:1px solid var(--line);display:none}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#3ddc97;color:#04130c;padding:14px 22px;border-radius:99px;font-weight:800;font-size:18px;opacity:0;transition:.25s;pointer-events:none;max-width:92%;z-index:99;text-align:center}
+#toast.show{opacity:1}#toast.err{background:#ff5a6a;color:#fff}
+.ov{position:fixed;inset:0;background:#000b;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.ov.mid{align-items:center;padding:16px}
+.sh{background:var(--card);border-top:3px solid var(--acc);border-radius:24px 24px 0 0;width:100%;max-width:1000px;padding:14px;max-height:100vh;overflow:auto}
+.ov.mid .sh{border:3px solid var(--acc);border-radius:24px;max-width:560px}
+.sh .mq{font-size:22px;font-weight:700;padding:10px 6px 6px;white-space:pre-wrap;word-break:break-word}
+.kb .top{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+.kb .top .tl{flex:1;text-align:center;font-weight:800;font-size:18px;color:var(--mut)}
+.kb .top button{height:56px;min-width:110px;border-radius:14px;font-weight:800;font-size:19px;color:#fff}
+.vis{min-height:64px;max-height:22vh;overflow:auto;background:#07060f;border:2px solid var(--acc);border-radius:14px;padding:12px 14px;font-size:22px;white-space:pre-wrap;word-break:break-all;margin-bottom:10px;user-select:text}
+.vis .cr{display:inline-block;width:2px;height:1.1em;background:var(--acc);vertical-align:text-bottom;margin:0 1px;animation:pisca 1s steps(1) infinite}
+@keyframes pisca{50%{opacity:0}}
+.kr{display:flex;gap:6px;margin-bottom:6px}
+.kr button{flex:1;height:clamp(52px,8.4vh,68px);border-radius:12px;background:#3c376e;font-size:24px;font-weight:700;color:#fff;min-width:0}
+.kr button:active{background:var(--acc)}
+.kr button.w{flex:1.6}.kr button.ww{flex:4}.kr button.f{background:#2a2552;font-size:19px}.kr button.on{background:var(--acc)}
+.kr button.go{background:linear-gradient(135deg,#1e8c5a,#2bc07a)}
+.kr.q button{height:52px;font-size:18px;background:#2a2552}
+.np{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
+.np button{height:clamp(58px,10vh,76px);border-radius:14px;background:#3c376e;font-size:30px;font-weight:800;color:#fff}
+.np button:active{background:var(--acc)}
+@media (max-width:520px){html,body{font-size:16px}.grid,.grid.home{grid-template-columns:1fr}.tile .ic{font-size:38px}.home .tile{min-height:120px}}
 </style>
 </head>
 <body>
 <div id="faixa"></div>
-<header><span class="dot" id="conn"></span><h1 id="tit">Tela touch</h1></header>
-
-<div class="grid" id="grid"></div>
-
-<h2>&#128172; Texto ao vivo na tela touch</h2>
-<textarea id="txt" style="height:90px;font:16px system-ui" placeholder="Escreve aqui e aperta Enviar (Ctrl+Enter). Antes, toca no card Tela de texto pra abrir la."></textarea>
-<div class="row"><button class="b" id="env">Enviar</button><button class="b alt" id="envl">Limpar la</button></div>
-
-<h2>&#128202; Status da tela touch</h2>
-<div class="box"><div class="meters" id="sis"><div class="mt"><b>carregando...</b></div></div></div>
-
-<h2>&#128228; Enviar pra tela touch</h2>
-<div class="box">
-  <b style="font-size:13px;color:var(--mut)">&#128279; LINK (abre no navegador da tela touch)</b>
-  <div class="row" style="margin-top:6px"><input id="url" type="text" placeholder="https://..." style="flex:1;min-width:180px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;font-size:15px"><button class="b" id="urlgo">Abrir</button></div>
-  <b style="display:block;margin-top:16px;font-size:13px;color:var(--mut)">&#128193; ARQUIVO (ate 50 MB, cai em C:\prisma\recebidos)</b>
-  <div class="row" style="margin-top:6px"><input id="arq" type="file" style="flex:1;color:var(--mut)"><button class="b" id="arqgo">Enviar</button></div>
-  <b style="display:block;margin-top:16px;font-size:13px;color:var(--mut)">&#128203; AREA DE TRANSFERENCIA</b>
-  <textarea id="clip" style="height:80px;margin-top:6px;font:15px system-ui" placeholder="Texto pra copiar la, ou o que voce pegar de la"></textarea>
-  <div class="row"><button class="b" id="clipset">&#11014;&#65039; Mandar pra tela touch</button><button class="b alt" id="clipget">&#11015;&#65039; Pegar da tela touch</button></div>
-</div>
-
-<h2>&#127899;&#65039; Macros</h2>
-<div class="grid" id="macrogrid"></div>
-<pre id="mout" style="margin-top:12px">O resultado da macro aparece aqui.</pre>
-<div class="row"><button class="b alt" id="mcpy">&#128203; Copiar resultado</button></div>
-<details style="margin-top:12px"><summary>Importar / editar macros (JSON)</summary>
-  <p style="color:var(--mut);font-size:13px;margin:8px 0">Tokens e senhas aparecem como ****. Deixa **** pra manter o valor guardado, ou troca pelo valor novo.</p>
-  <textarea id="mjson" style="height:220px;font:12.5px ui-monospace,Consolas,monospace"></textarea>
-  <div class="row"><button class="b" id="msalva">&#128190; Salvar macros</button></div>
-</details>
-
-<h2>&#128444;&#65039; Configurar o kiosk</h2>
-<div class="box">
-  <b style="font-size:13px;color:var(--mut)">&#127780;&#65039; CIDADE DO CLIMA <span id="kinfo"></span></b>
-  <div class="row" style="margin-top:6px"><input id="kcid" type="text" placeholder="ex.: Sao Paulo" style="flex:1;min-width:180px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;font-size:15px"><button class="b alt" id="kbusca">Buscar</button></div>
-  <div class="chips" id="kres" style="margin-top:8px"></div>
-  <b style="display:block;margin-top:12px;font-size:13px;color:var(--mut)">&#128994; PROJETOS (um por linha: Nome | https://endereco)</b>
-  <textarea id="kproj" style="height:110px;margin-top:6px;font:14px ui-monospace,Consolas,monospace" placeholder="Hermes OS | https://..."></textarea>
-  <div class="row"><button class="b" id="ksalva">&#128190; Salvar kiosk</button></div>
-</div>
-
-<h2>&#127911; Som, midia e brilho</h2>
-<div class="box">
-  <div class="row" style="margin-top:0">
-    <button class="b alt big" data-k="vol_down">&#128265;</button>
-    <button class="b alt big" data-k="vol_up">&#128266;</button>
-    <button class="b alt big" data-k="mute">&#128263;</button>
-    <button class="b alt big" data-k="prev">&#9198;&#65039;</button>
-    <button class="b alt big" data-k="play">&#9199;&#65039;</button>
-    <button class="b alt big" data-k="next">&#9197;&#65039;</button>
-  </div>
-  <div class="row"><span style="font-size:22px">&#9728;&#65039;</span><input type="range" id="bri" min="5" max="100" value="70" style="flex:1"></div>
-</div>
-
-<h2>&#128248; Ver a tela touch</h2>
-<div class="row" style="margin-top:0"><button class="b" id="foto">&#128248; Tirar foto da tela</button></div>
-<img id="shot" alt="captura da tela touch">
-
-<h2>&#128433;&#65039; Mouse da tela touch</h2>
-<div id="pad">Arrasta aqui pra mover o mouse da tela touch. Toque rapido = clique.</div>
-<div class="row">
-  <button class="b alt" id="mE">Esquerdo</button><button class="b alt" id="mD">Direito</button><button class="b alt" id="m2">Duplo</button>
-  <button class="b alt" id="mA">Arrastar: off</button><button class="b alt" id="sU">Rolar &#9650;</button><button class="b alt" id="sD">Rolar &#9660;</button>
-</div>
-
-<h2>&#9881;&#65039; Rodar PowerShell na tela touch</h2>
-<div class="chips" id="presets"></div>
-<textarea id="ps" placeholder="Cola aqui o script PowerShell. Ele roda NA TELA TOUCH, como administrador."></textarea>
-<div class="row">
-  <button class="b" id="run">Executar (Ctrl+Enter)</button>
-  <button class="b alt" id="clr">Limpar saida</button>
-  <button class="b alt" id="cpy">&#128203; Copiar saida</button>
-  <span id="tempo" style="color:#9a96c4;font-size:13px"></span><span id="barp"></span>
-</div>
-<div id="bar"><div id="barf"></div></div>
-<pre id="out">A saida aparece aqui.</pre>
-
-<h2>&#128295; Avancado</h2>
-<details id="det"><summary>Lista de dispositivos de entrada (teclado, mouse, toque)</summary>
-  <table id="devs"></table>
-</details>
-
+<div id="top"><button id="back" aria-label="voltar">&#8592;</button><div id="crumb"></div><span class="dot" id="conn"></span></div>
+<div id="view"></div>
 <div id="toast"></div>
-<div id="modal"><div>
-  <b id="mtit">&#128273; Token do painel</b>
-  <p style="color:#9a96c4;font-size:13px;margin-top:6px">Esta no arquivo C:\prisma\painel\token.txt da tela touch.</p>
-  <input id="tk" type="text" inputmode="none" autocomplete="off" placeholder="toca nos numeros">
-  <div id="keys"></div>
-  <button class="b" id="tkok" style="width:100%;font-size:20px">Entrar</button>
-</div></div>
-
+<input type="file" id="arq" style="display:none">
 <script>
 const $ = s => document.querySelector(s);
+const E = c => String.fromCodePoint.apply(null, c);
 const LOCAL = ['127.0.0.1', 'localhost'].indexOf(location.hostname) >= 0;
 document.body.className = LOCAL ? 'local' : 'remoto';
-$('#faixa').innerHTML = LOCAL ? '&#128421; VOCE ESTA NA TELA TOUCH (painel local)' : '&#128279; REMOTO: controlando a tela touch de outro computador';
-$('#tit').innerHTML = LOCAL ? '&#128421; Tela touch (aqui)' : '&#128279; Controlando a tela touch';
+$('#faixa').textContent = LOCAL ? E([0x1F5A5, 0xFE0F]) + ' VOCE ESTA NA TELA TOUCH (painel local)' : E([0x1F517]) + ' REMOTO: controlando a tela touch de outro computador';
 document.title = LOCAL ? 'AQUI - Tela touch' : 'REMOTO - Tela touch';
 $('#tc').content = LOCAL ? '#d98a1a' : '#1a9ad9';
+
 let TOKEN = '';
-let NOVO = false;
 try { TOKEN = localStorage.getItem('tk') || ''; } catch (e) {}
-if (location.hash.length > 1) {
+if (location.hash.length > 1 && location.hash.indexOf('#/') !== 0) {
   TOKEN = decodeURIComponent(location.hash.slice(1));
   try { localStorage.setItem('tk', TOKEN); } catch (e) {}
   history.replaceState(null, '', location.pathname);
 }
 
-function toast(t, ruim) {
-  const el = $('#toast');
-  el.textContent = t;
-  el.className = 'show' + (ruim ? ' err' : '');
-  setTimeout(() => { el.className = ''; }, 2800);
-}
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function vib() { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} }
+let toastT = null;
+function toast(t, ruim) { const x = $('#toast'); x.textContent = t; x.className = 'show' + (ruim ? ' err' : ''); clearTimeout(toastT); toastT = setTimeout(() => { x.className = ''; }, 3200); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-function pedirToken() { $('#modal').classList.add('show'); }
-['1','2','3','4','5','6','7','8','9','Apagar','0','Limpar'].forEach(k => {
-  const b = document.createElement('button');
-  b.textContent = k;
-  if (k === 'Apagar' || k === 'Limpar') b.style.fontSize = '15px';
-  b.onclick = () => {
-    const i = $('#tk');
-    i.value = k === 'Apagar' ? i.value.slice(0, -1) : k === 'Limpar' ? '' : i.value + k;
-  };
-  $('#keys').appendChild(b);
-});
-$('#tkok').onclick = async () => {
-  if (NOVO) {
-    const t = $('#tk').value.trim(); NOVO = false;
-    $('#modal').classList.remove('show'); $('#mtit').textContent = 'Token do painel';
-    try { const r = await api('token', { t }); toast(r.msg, r.ok === false); if (r.ok) { TOKEN = t; try { localStorage.setItem('tk', t); } catch (e) {} setTimeout(() => location.reload(), 8000); } }
-    catch (e) { toast(String(e.message || e), true); }
-    return;
-  }
-  TOKEN = $('#tk').value.trim();
-  try { localStorage.setItem('tk', TOKEN); } catch (e) {}
-  $('#modal').classList.remove('show');
-  refresh();
-};
-
+let pedindo = false;
 async function api(rota, corpo) {
-  const r = await fetch('/api/' + rota, {
-    method: corpo ? 'POST' : 'GET',
-    headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' },
-    body: corpo ? JSON.stringify(corpo) : undefined
-  });
+  const r = await fetch('/api/' + rota, { method: corpo ? 'POST' : 'GET', headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' }, body: corpo ? JSON.stringify(corpo) : undefined });
   if (r.status === 401) { pedirToken(); throw new Error('token errado'); }
   return r.json();
 }
-
-const tri = v => v === 'on' ? ['ok', 'LIGADO (toca pra desligar)']
-  : v === 'off' ? ['bad', 'DESLIGADO (toca pra ligar)']
-  : ['neutral', 'nao encontrado (usa a lista avancada)'];
-
-async function enviar(t) {
-  try { const r = await api('texto', { t }); toast(r.ok ? (t ? 'Enviado' : 'Limpo') : 'Falhou', !r.ok); }
-  catch (e) { toast('Erro: ' + (e.message || e), true); }
+async function pedirToken() {
+  if (pedindo) return; pedindo = true;
+  const v = await Teclado.abrir({ titulo: 'Token do painel (toca nos numeros)', somenteNum: true });
+  pedindo = false;
+  if (v) { TOKEN = v.trim(); try { localStorage.setItem('tk', TOKEN); } catch (e) {} refresh(); }
 }
-$('#env').onclick = () => enviar($('#txt').value);
-$('#envl').onclick = () => { $('#txt').value = ''; enviar(''); };
-$('#txt').addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') enviar($('#txt').value); });
-const E = c => String.fromCodePoint(...c);
-const CARDS = [
-  { e: [0x2328, 0xFE0F], nome: 'Teclado fisico', f: s => s.teclado_bloqueado ? ['bad', 'BLOQUEADO (toca pra liberar)'] : ['ok', 'liberado (toca pra bloquear)'], go: () => api('acao', { nome: 'teclado' }) },
-  { e: [0x1F5B1, 0xFE0F], nome: 'Touchpad', f: s => tri(s.touchpad), go: () => api('toggle', { tipo: 'touchpad' }) },
-  { e: [0x1F446], nome: 'Touchscreen', f: s => tri(s.touchscreen), go: () => api('toggle', { tipo: 'touchscreen' }) },
-  { e: [0x1F524], nome: 'Teclado na tela', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'osk' }) },
-  { e: [0x1F4AC], nome: 'Tela de texto', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'abrir_tela' }) },
-  { e: [0x1F5BC, 0xFE0F], nome: 'Kiosk', f: () => ['neutral', 'relogio, clima e projetos na tela touch'], go: () => api('acao', { nome: 'abrir_kiosk' }) },
-  { e: [0x1F504], nome: 'Atualizar painel', f: () => ['neutral', 'puxa a versao nova do GitHub'], go: async () => { const r = await api('acao', { nome: 'atualizar' }); if (r.ok) { toast('Reiniciando...'); setTimeout(() => location.reload(), 7000); } return r; } },
-  { e: [0x1F501], nome: 'Reiniciar painel', f: () => ['neutral', 'so o painel, nao o PC'], go: async () => { const r = await api('acao', { nome: 'reiniciar_painel' }); if (r.ok) setTimeout(() => location.reload(), 7000); return r; } },
-  { e: [0x1F511], nome: 'Trocar token', f: () => ['neutral', 'digita o novo no teclado numerico'], go: () => { NOVO = true; $('#mtit').textContent = 'Novo token (4 a 32 numeros)'; $('#tk').value = ''; pedirToken(); } },
-  { e: [0x1F319], nome: 'Apagar a tela', f: () => ['neutral', 'agora'], go: () => api('acao', { nome: 'tela_off' }) },
-  { e: [0x2615], nome: 'Nunca dormir', f: s => s.nunca_dormir ? ['ok', 'ATIVO (toca pra desativar)'] : ['neutral', 'desativado (toca pra ativar)'], go: () => api('acao', { nome: 'sono' }) },
-  { e: [0x267B, 0xFE0F], nome: 'Reativar tudo', f: () => ['neutral', 'teclado, touchpad e touch'], go: () => api('acao', { nome: 'reativar' }) },
-  { e: [0x1F501], nome: 'Reiniciar PC', f: () => ['bad', 'reinicia a tela touch'], go: () => confirm('Reiniciar a tela touch?') ? api('acao', { nome: 'reiniciar' }) : null },
-  { e: [0x1F50C], nome: 'Desligar PC', f: () => ['bad', 'desliga a tela touch'], go: () => confirm('Desligar a tela touch?') ? api('acao', { nome: 'desligar' }) : null }
-];
 
-let ST = {};
-function desenhar() {
-  const g = $('#grid');
-  g.innerHTML = '';
-  CARDS.forEach(c => {
-    const [cls, txt] = c.f(ST);
-    const b = document.createElement('button');
-    b.className = 'card ' + cls;
-    b.innerHTML = '<span class="ic">' + E(c.e) + '</span><b>' + c.nome + '</b><span>' + txt + '</span>';
-    b.onclick = async () => {
-      try {
-        const r = await c.go();
-        if (r) toast(r.msg || 'ok', r.ok === false);
-      } catch (e) { toast(String(e.message || e), true); }
-      setTimeout(refresh, 1200);
-    };
-    g.appendChild(b);
+/* ---------- folhas: confirmar, resultado, teclado ---------- */
+function folha(cls, build) { const o = el('div', 'ov ' + (cls || '')); const b = el('div', 'sh'); o.appendChild(b); document.body.appendChild(o); const close = () => o.remove(); build(b, close); return close; }
+function confirmar(msg, sim, cls) {
+  return new Promise(res => folha('mid', (b, close) => {
+    b.appendChild(el('div', 'mq')).textContent = msg;
+    const d = el('div', 'two');
+    const n = el('button', 'tile neutral mini', '<b>Nao</b>'), s = el('button', 'tile ' + (cls || 'bad') + ' mini', '<b></b>');
+    s.querySelector('b').textContent = sim || 'Sim';
+    n.onclick = () => { close(); res(false); }; s.onclick = () => { close(); res(true); };
+    d.appendChild(n); d.appendChild(s); b.appendChild(d);
+  }));
+}
+function resultado(titulo, texto) {
+  folha('mid', (b, close) => {
+    b.appendChild(el('div', 'mq')).textContent = titulo;
+    const p = el('pre'); p.textContent = texto; p.style.marginTop = '8px'; b.appendChild(p);
+    const d = el('div', 'two');
+    const c = el('button', 'tile neutral mini', '<b>' + E([0x1F4CB]) + ' Copiar</b>'), f = el('button', 'tile acc mini', '<b>Fechar</b>');
+    c.onclick = () => copiar(texto).then(() => toast('Copiado'), () => toast('Nao consegui copiar', true));
+    f.onclick = close; d.appendChild(c); d.appendChild(f); b.appendChild(d);
   });
 }
-
-async function refresh() {
-  try {
-    ST = await api('status');
-    $('#conn').className = 'dot on';
-    desenhar();
-  } catch (e) {
-    $('#conn').className = 'dot off';
-  }
-}
-
-const PRESETS = {
-  'Resumo do PC': "Get-CimInstance Win32_OperatingSystem | Select-Object @{n='RAM livre GB';e={[math]::Round($_.FreePhysicalMemory/1MB,1)}}, LastBootUpTime | Format-List\nGet-Volume | Where-Object DriveLetter | Select-Object DriveLetter, @{n='Livre GB';e={[math]::Round($_.SizeRemaining/1GB)}} | Format-Table -AutoSize\nGet-Process | Sort-Object WorkingSet -Descending | Select-Object -First 8 Name, @{n='MB';e={[math]::Round($_.WorkingSet/1MB)}} | Format-Table -AutoSize",
-  'Programas instalados': "Get-ItemProperty 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' | Where-Object DisplayName | Select-Object DisplayName, DisplayVersion | Sort-Object DisplayName | Format-Table -AutoSize",
-  'Tailscale status': "& 'C:\\Program Files\\Tailscale\\tailscale.exe' status"
-};
-Object.keys(PRESETS).forEach(k => {
-  const c = document.createElement('span');
-  c.className = 'chip';
-  c.textContent = k;
-  c.onclick = () => { $('#ps').value = PRESETS[k]; };
-  $('#presets').appendChild(c);
-});
-
-async function rodar() {
-  const script = $('#ps').value;
-  if (!script.trim()) return;
-  $('#out').textContent = 'Rodando na tela touch...';
-  $('#tempo').textContent = '';
-  $('#run').disabled = true;
-  let pct = 0;
-  $('#bar').style.display = 'block';
-  const tick = setInterval(() => { pct += (95 - pct) * 0.04; $('#barf').style.width = pct + '%'; $('#barp').textContent = Math.round(pct) + '%'; }, 250);
-  try {
-    const r = await api('run', { script });
-    $('#out').textContent = (r.saida || '(sem saida)') + '\n[codigo de saida: ' + r.codigo + ']';
-    $('#tempo').textContent = r.seg + ' s';
-  } catch (e) {
-    $('#out').textContent = 'Erro: ' + (e.message || e);
-  }
-  clearInterval(tick);
-  $('#barf').style.width = '100%'; $('#barp').textContent = '100%';
-  setTimeout(() => { $('#bar').style.display = 'none'; $('#barp').textContent = ''; $('#barf').style.width = '0'; }, 1200);
-  $('#run').disabled = false;
-}
-$('#run').onclick = rodar;
-$('#clr').onclick = () => { $('#out').textContent = ''; };
-$('#ps').addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') rodar(); });
-
-$('#det').addEventListener('toggle', async () => {
-  if (!$('#det').open) return;
-  $('#devs').innerHTML = '<tr><td>Carregando...</td></tr>';
-  try {
-    const lista = await api('devs');
-    $('#devs').innerHTML = '<tr><th>Estado</th><th>Tipo</th><th>Nome</th><th></th></tr>';
-    lista.forEach(d => {
-      const tr = document.createElement('tr');
-      const on = d.Status === 'OK';
-      tr.innerHTML = '<td>' + (on ? 'ligado' : 'desligado') + '</td><td>' + d.Class + '</td><td>' + d.FriendlyName + '</td><td></td>';
-      const b = document.createElement('button');
-      b.className = 'b alt';
-      b.textContent = on ? 'Desligar' : 'Ligar';
-      b.onclick = async () => {
-        const r = await api('dev', { id: d.InstanceId });
-        toast(r.msg || 'ok', r.ok === false);
-        $('#det').open = false;
-        setTimeout(refresh, 1200);
-      };
-      tr.lastChild.appendChild(b);
-      $('#devs').appendChild(tr);
-    });
-  } catch (e) {
-    $('#devs').innerHTML = '<tr><td>Erro: ' + (e.message || e) + '</td></tr>';
-  }
-});
-
-// ---- copiar saida do PowerShell (funciona em http, sem depender da API de clipboard) ----
 function copiar(t) {
   if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t);
   return new Promise((ok, erro) => {
-    const a = document.createElement('textarea');
-    a.value = t; a.style.position = 'fixed'; a.style.opacity = '0';
+    const a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0';
     document.body.appendChild(a); a.focus(); a.select();
-    try { document.execCommand('copy') ? ok() : erro(new Error('o navegador negou')); } catch (e) { erro(e); }
+    try { document.execCommand('copy') ? ok() : erro(new Error('negado')); } catch (e) { erro(e); }
     document.body.removeChild(a);
   });
 }
-$('#cpy').onclick = () => {
-  const t = $('#out').textContent;
-  if (!t || t === 'A saida aparece aqui.') return toast('Nada pra copiar ainda', true);
-  copiar(t).then(() => toast('Saida copiada'), e => toast('Nao consegui copiar: ' + (e.message || e), true));
+
+const Teclado = {
+  abrir(o) {
+    return new Promise(res => folha('', (b, close) => {
+      let txt = String(o.valor || ''), pos = txt.length, shift = false, pg = o.pagina || 'abc';
+      b.classList.add('kb');
+      const fim = v => { close(); res(v); };
+      function ins(s) { txt = txt.slice(0, pos) + s + txt.slice(pos); pos += s.length; }
+      function apaga() { if (pos > 0) { txt = txt.slice(0, pos - 1) + txt.slice(pos); pos--; } }
+      const L = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+      const ACC = ['\u00e1\u00e0\u00e2\u00e3\u00e9\u00ea\u00ed', '\u00f3\u00f4\u00f5\u00fa\u00fc\u00e7']
+      const NUM = ['1234567890', '-/:;()$&@"', '.,?!\''];
+      const SIM = ['[]{}#%^*+=', '_\\|~<>', '.,?!\''];
+      function tecla(lbl, fn, cls, rep) {
+        const k = el('button', cls || ''); k.textContent = lbl;
+        let t = null, i = null;
+        k.addEventListener('pointerdown', e => { e.preventDefault(); vib(); fn(); draw(true); if (rep) { t = setTimeout(() => { i = setInterval(() => { fn(); draw(true); }, 70); }, 450); } });
+        const para = () => { clearTimeout(t); clearInterval(i); };
+        k.addEventListener('pointerup', para); k.addEventListener('pointerleave', para); k.addEventListener('pointercancel', para);
+        return k;
+      }
+      function linha(cls) { return el('div', 'kr' + (cls ? ' ' + cls : '')); }
+      let top, vis, corpo;
+      function draw(soTexto) {
+        const t1 = txt.slice(0, pos), t2 = txt.slice(pos);
+        vis.innerHTML = ''; vis.appendChild(document.createTextNode(t1)); vis.appendChild(el('span', 'cr')); vis.appendChild(document.createTextNode(t2));
+        if (soTexto === true && corpo.dataset.pg === pg + shift) return;
+        corpo.dataset.pg = pg + shift; corpo.innerHTML = '';
+        if (pg === 'num' && !o.multilinha && o.somenteNum) { numpad(); return; }
+        if (o.rapidas !== false && !o.somenteNum) {
+          const q = linha('q');
+          (o.rapidas || ['https://', '.com', '.com.br', '@', '/']).forEach(s => q.appendChild(tecla(s, () => ins(s))));
+          corpo.appendChild(q);
+        }
+        let rows;
+        if (pg === 'abc') rows = L.map(r => r.split('')); else if (pg === 'acc') rows = [ACC[0].split(''), ACC[1].split('')]; else if (pg === 'num') rows = NUM.map(r => r.split('')); else rows = SIM.map(r => r.split(''));
+        rows.forEach((r, ri) => {
+          const d = linha();
+          if (ri === 2 && pg === 'abc') d.appendChild(tecla(shift ? '\u21E7' : '\u21E7', () => { shift = !shift; }, 'f w' + (shift ? ' on' : '')));
+          r.forEach(c => { const up = (pg === 'abc' || pg === 'acc') && shift; d.appendChild(tecla(up ? c.toUpperCase() : c, () => { ins(up ? c.toUpperCase() : c); if (shift) shift = false; })); });
+          if (ri === rows.length - 1) d.appendChild(tecla('\u232B', apaga, 'f w', true));
+          corpo.appendChild(d);
+        });
+        const d = linha();
+        if (pg === 'abc' || pg === 'acc') {
+          d.appendChild(tecla('123', () => { pg = 'num'; }, 'f w'));
+          d.appendChild(tecla(pg === 'abc' ? '\u00e1' : 'abc', () => { pg = pg === 'abc' ? 'acc' : 'abc'; }, 'f'));
+        } else {
+          d.appendChild(tecla('abc', () => { pg = 'abc'; }, 'f w'));
+          d.appendChild(tecla(pg === 'num' ? '#+=' : '123', () => { pg = pg === 'num' ? 'sim' : 'num'; }, 'f'));
+        }
+        d.appendChild(tecla('\u25C0', () => { if (pos > 0) pos--; }, 'f'));
+        d.appendChild(tecla('espaco', () => ins(' '), 'ww f'));
+        d.appendChild(tecla('\u25B6', () => { if (pos < txt.length) pos++; }, 'f'));
+        if (o.multilinha) d.appendChild(tecla('\u21B5', () => ins('\n'), 'f w'));
+        corpo.appendChild(d);
+      }
+      function numpad() {
+        const g = el('div', 'np');
+        '123456789'.split('').forEach(c => g.appendChild(tecla(c, () => ins(c))));
+        g.appendChild(tecla('Limpar', () => { txt = ''; pos = 0; }));
+        g.appendChild(tecla('0', () => ins('0')));
+        g.appendChild(tecla('\u232B', apaga, '', true));
+        corpo.appendChild(g);
+        const d = linha(); d.appendChild(tecla('ABC (letras)', () => { o.somenteNum = false; pg = 'abc'; }, 'f')); corpo.appendChild(d);
+      }
+      top = el('div', 'top');
+      const c = el('button', 'tile neutral mini'); c.textContent = '\u2715 Cancelar'; c.style.cssText = 'width:auto;min-height:56px;font-size:19px;font-weight:800';
+      const ok = el('button', 'tile ok mini'); ok.textContent = '\u2714 Pronto'; ok.style.cssText = 'width:auto;min-height:56px;font-size:19px;font-weight:800';
+      const tl = el('div', 'tl'); tl.textContent = o.titulo || '';
+      c.onclick = () => fim(null); ok.onclick = () => fim(txt);
+      top.appendChild(c); top.appendChild(tl); top.appendChild(ok);
+      vis = el('div', 'vis'); corpo = el('div');
+      b.appendChild(top); b.appendChild(vis); b.appendChild(corpo);
+      if (o.somenteNum) pg = 'num';
+      draw();
+    }));
+  }
 };
 
-// ---- macros ----
-let MAC = [];
-function mDesenha() {
-  const g = $('#macrogrid'); g.innerHTML = '';
-  if (!MAC.length) { g.innerHTML = '<div style="color:var(--mut)">Nenhuma macro ainda. Abre "Importar / editar macros" e cola o JSON.</div>'; return; }
-  MAC.forEach(m => {
-    const b = document.createElement('button'); b.className = 'card neutral';
-    b.innerHTML = '<span class="ic">' + E(m.emoji && m.emoji.length ? m.emoji : [0x1F39B, 0xFE0F]) + '</span><b></b>';
-    b.querySelector('b').textContent = m.nome;
-    b.onclick = () => mRoda(m);
-    g.appendChild(b);
-  });
+/* ---------- roteador ---------- */
+const R = {}; let cur = null, ST = {}, SIS = null, MAC = [], KCFG = { cidade: '', lat: null, lon: null, projetos: [] };
+const rota = () => location.hash.replace(/^#\/?/, '') || 'inicio';
+const go = r => { location.hash = '#/' + r; };
+function render() {
+  const r = rota(); cur = R[r] || R.inicio; const v = $('#view'); v.innerHTML = '';
+  const pai = cur.parent && R[cur.parent] ? R[cur.parent].t : null;
+  $('#crumb').innerHTML = (pai ? pai + ' &#8250; ' : '') + '<b></b>'; $('#crumb b').textContent = E(cur.e) + ' ' + cur.t;
+  $('#back').style.visibility = (R[r] && r !== 'inicio') ? 'visible' : 'hidden';
+  cur.render(v); window.scrollTo(0, 0);
 }
-async function mLoad() { try { MAC = await api('macros'); mDesenha(); $('#mjson').value = JSON.stringify(MAC, null, 1); } catch (e) {} }
-async function mRoda(m) {
-  let texto = '';
-  if (m.pergunta) { texto = prompt(m.pergunta) || ''; if (!texto) return; }
-  if (m.confirmar && !confirm('Disparar "' + m.nome + '"?')) return;
-  $('#mout').textContent = 'Rodando ' + m.nome + '...';
-  try {
-    const r = await api('macro', { id: m.id, texto });
-    $('#mout').textContent = (r.erro || ('HTTP ' + r.status + ' (' + r.ms + ' ms)')) + '\n' + (r.corpo || '');
-    toast(r.ok ? 'Macro ok' : 'Macro falhou', !r.ok);
-  } catch (e) { $('#mout').textContent = 'Erro: ' + (e.message || e); toast('Erro', true); }
-}
-$('#msalva').onclick = async () => {
-  let l; try { l = JSON.parse($('#mjson').value); } catch (e) { return toast('JSON invalido: ' + e.message, true); }
-  try { const r = await api('macros', { macros: l }); toast(r.msg, r.ok === false); mLoad(); } catch (e) { toast(String(e.message || e), true); }
-};
-$('#mcpy').onclick = () => copiar($('#mout').textContent).then(() => toast('Resultado copiado'), e => toast('Nao consegui copiar', true));
-mLoad();
+window.addEventListener('hashchange', render);
+$('#back').onclick = () => { vib(); go(cur.parent || 'inicio'); };
 
-// ---- configurar kiosk ----
-let KCFG = { cidade: '', lat: null, lon: null, projetos: [] };
-function kInfo() { $('#kinfo').textContent = KCFG.lat == null ? '(nenhuma escolhida)' : '(atual: ' + KCFG.cidade + ')'; }
-async function kLoad() {
-  try { KCFG = await api('kioskcfg'); $('#kcid').value = KCFG.cidade || ''; $('#kproj').value = (KCFG.projetos || []).map(p => p.nome + ' | ' + p.url).join('\n'); kInfo(); } catch (e) {}
-}
-$('#kbusca').onclick = async () => {
-  const q = $('#kcid').value.trim(); if (!q) return;
-  $('#kres').innerHTML = '';
-  try {
-    const j = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=5&language=pt&name=' + encodeURIComponent(q)).then(r => r.json());
-    if (!j.results) return toast('Nao achei essa cidade', true);
-    j.results.forEach(c => {
-      const ch = document.createElement('span'); ch.className = 'chip';
-      ch.textContent = c.name + (c.admin1 ? ' - ' + c.admin1 : '') + (c.country ? ', ' + c.country : '');
-      ch.onclick = () => { KCFG.cidade = c.name; KCFG.lat = c.latitude; KCFG.lon = c.longitude; $('#kcid').value = c.name; $('#kres').innerHTML = ''; kInfo(); toast('Cidade escolhida. Falta salvar.'); };
-      $('#kres').appendChild(ch);
-    });
-  } catch (e) { toast('Busca falhou: ' + (e.message || e), true); }
-};
-$('#ksalva').onclick = async () => {
-  const projetos = $('#kproj').value.split('\n').map(l => l.split('|')).filter(a => a.length >= 2).map(a => ({ nome: a[0].trim(), url: a.slice(1).join('|').trim() }));
-  try { const r = await api('kioskcfg', { cidade: KCFG.cidade, lat: KCFG.lat, lon: KCFG.lon, projetos }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); }
-};
-kLoad();
-
-// ---- enviar pra tela touch ----
-$('#urlgo').onclick = async () => { try { const r = await api('url', { u: $('#url').value.trim() }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); } };
-$('#arqgo').onclick = () => {
-  const f = $('#arq').files[0];
-  if (!f) return toast('Escolhe um arquivo primeiro', true);
-  if (f.size > 50 * 1024 * 1024) return toast('Passou de 50 MB', true);
-  toast('Enviando ' + f.name + '...');
-  const fr = new FileReader();
-  fr.onload = async () => {
-    try { const r = await api('upload', { nome: f.name, b64: String(fr.result).split(',')[1] }); toast(r.msg, r.ok === false); }
-    catch (e) { toast(String(e.message || e), true); }
+function tile(o) {
+  const b = el('button', 'tile ' + (o.cls || 'neutral'));
+  b.innerHTML = '<span class="ic"></span><span class="tx"><b></b><small></small></span>' + (o.arrow ? '<span class="ar">&#8594;</span>' : '');
+  b.querySelector('.ic').textContent = o.e ? E(o.e) : ''; b.querySelector('b').textContent = o.t; b.querySelector('small').textContent = o.s || '';
+  if (!o.e) b.querySelector('.ic').remove(); if (!o.s) b.querySelector('small').remove();
+  b.onclick = async () => {
+    vib(); if (b.classList.contains('busy')) return; b.classList.add('busy');
+    try { await o.go(); } catch (e) { toast(String(e.message || e), true); }
+    b.classList.remove('busy');
   };
-  fr.readAsDataURL(f);
-};
-$('#clipset').onclick = async () => { try { const r = await api('clipset', { t: $('#clip').value }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); } };
-$('#clipget').onclick = async () => { try { const r = await api('clip'); if (r.ok) { $('#clip').value = r.t; toast('Pegado da tela touch'); } else toast('Falhou', true); } catch (e) { toast(String(e.message || e), true); } };
-
-// ---- status, som/brilho, foto ----
-function medidor(t, v, pct, extra) { return '<div class="mt"><b>' + t + '</b><div class="v">' + v + '</div><div class="tr"><i style="width:' + (pct || 0) + '%"></i></div>' + (extra ? '<div style="font-size:12px;color:var(--mut);margin-top:4px">' + extra + '</div>' : '') + '</div>'; }
-async function sistema() {
-  if (document.hidden) return;
-  try {
-    const r = await api('sistema'); let h = '';
-    h += medidor('&#129504; CPU', r.cpu == null ? '...' : r.cpu + '%', r.cpu);
-    h += medidor('&#128190; MEMORIA', r.ram_pct + '%', r.ram_pct, r.ram_livre + ' de ' + r.ram_total + ' GB livres');
-    (r.discos || []).forEach(d => { const u = Math.round(100 * (d.total - d.livre) / d.total); h += medidor('&#128191; DISCO ' + d.l + ':', d.livre + ' GB livres', u, 'de ' + d.total + ' GB'); });
-    const m = r.uptime_min; h += medidor('&#9201;&#65039; LIGADA HA', m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min', 0);
-    $('#sis').innerHTML = h;
-  } catch (e) {}
+  return b;
 }
-setInterval(sistema, 3000); sistema();
-document.querySelectorAll('[data-k]').forEach(b => { b.onclick = () => api('tecla', { k: b.dataset.k }).catch(e => toast(String(e.message || e), true)); });
-let briT = null;
-$('#bri').oninput = () => { clearTimeout(briT); briT = setTimeout(async () => { try { const r = await api('brilho', { n: +$('#bri').value }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); } }, 350); };
-$('#foto').onclick = async () => {
-  $('#foto').disabled = true; toast('Tirando foto...');
-  try {
+function mini(t, cls, fn) { const b = el('button', 'tile mini ' + (cls || 'neutral'), '<b></b>'); b.querySelector('b').textContent = t; b.onclick = () => { vib(); fn(); }; return b; }
+function grid(v, cls) { const g = el('div', 'grid ' + (cls || '')); v.appendChild(g); return g; }
+const tri = v => v === 'on' ? ['ok', 'LIGADO (toca pra desligar)'] : v === 'off' ? ['bad', 'DESLIGADO (toca pra ligar)'] : ['neutral', 'nao encontrado'];
+const post = async (rota, corpo, ok) => { const r = await api(rota, corpo); toast(r.msg || ok || 'ok', r.ok === false); return r; };
+
+/* ---------- INICIO ---------- */
+R.inicio = { t: 'Inicio', e: [0x1F3E0], render(v) {
+  const g = grid(v, 'home'); this.g = g; this.upd();
+}, upd() {
+  const g = this.g; if (!g || !g.isConnected) return; g.innerHTML = '';
+  const sis = SIS ? 'CPU ' + (SIS.cpu == null ? '...' : SIS.cpu + '%') + '  RAM ' + SIS.ram_pct + '%' : 'carregando...';
+  [
+    ['controle', [0x1F5A5, 0xFE0F], 'Controle', (ST.teclado_bloqueado ? 'teclado BLOQUEADO' : 'teclado liberado') + ', touchpad ' + (ST.touchpad === 'on' ? 'ligado' : ST.touchpad === 'off' ? 'desligado' : '?')],
+    ['midia', [0x1F3A7], 'Midia e tela', 'volume, brilho, foto, mouse'],
+    ['enviar', [0x1F4E4], 'Enviar', 'link, arquivo, area de transferencia, texto'],
+    ['status', [0x1F4CA], 'Status', sis],
+    ['macros', [0x1F39B, 0xFE0F], 'Macros', MAC.length + ' botoes (webhooks)'],
+    ['kiosk', [0x1F5BC, 0xFE0F], 'Kiosk', 'relogio, clima, projetos'],
+    ['sistema', [0x2699, 0xFE0F], 'Sistema', 'atualizar, token, PC, PowerShell']
+  ].forEach(a => g.appendChild(tile({ e: a[1], t: a[2], s: a[3], arrow: true, go: () => go(a[0]) })));
+} };
+
+/* ---------- CONTROLE ---------- */
+R.controle = { t: 'Controle', e: [0x1F5A5, 0xFE0F], parent: 'inicio', render(v) { this.g = grid(v); this.upd(); }, upd() {
+  const g = this.g; if (!g || !g.isConnected) return; g.innerHTML = '';
+  const s = ST, tb = tri(s.touchpad), ts = tri(s.touchscreen);
+  [
+    { e: [0x2328, 0xFE0F], t: 'Teclado fisico', cls: s.teclado_bloqueado ? 'bad' : 'ok', s: s.teclado_bloqueado ? 'BLOQUEADO (toca pra liberar)' : 'liberado (toca pra bloquear)', go: () => post('acao', { nome: 'teclado' }) },
+    { e: [0x1F5B1, 0xFE0F], t: 'Touchpad', cls: tb[0], s: tb[1], go: () => post('toggle', { tipo: 'touchpad' }) },
+    { e: [0x1F446], t: 'Touchscreen', cls: ts[0], s: ts[1], go: () => post('toggle', { tipo: 'touchscreen' }) },
+    { e: [0x267B, 0xFE0F], t: 'Reativar tudo', s: 'teclado, touchpad e touch', go: () => post('acao', { nome: 'reativar' }) },
+    { e: [0x1F524], t: 'Teclado do Windows', s: 'abre o teclado na tela touch', go: () => post('acao', { nome: 'osk' }) },
+    { e: [0x1F319], t: 'Apagar a tela', s: 'toca na tela pra acordar', go: () => post('acao', { nome: 'tela_off' }) },
+    { e: [0x2615], t: 'Nunca dormir', cls: s.nunca_dormir ? 'ok' : 'neutral', s: s.nunca_dormir ? 'ATIVO (toca pra desativar)' : 'desativado (toca pra ativar)', go: () => post('acao', { nome: 'sono' }) }
+  ].forEach(o => g.appendChild(tile({ ...o, go: async () => { await o.go(); setTimeout(refresh, 900); } })));
+} };
+
+/* ---------- MIDIA ---------- */
+let BRI = 70, briT = null;
+function brilho(n) { BRI = Math.max(5, Math.min(100, n)); const x = $('#bri'); if (x) x.textContent = BRI + '%'; clearTimeout(briT); briT = setTimeout(async () => { try { const r = await api('brilho', { n: BRI }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); } }, 300); }
+R.midia = { t: 'Midia e tela', e: [0x1F3A7], parent: 'inicio', render(v) {
+  const tec = k => () => api('tecla', { k }).catch(e => toast(String(e.message || e), true));
+  v.appendChild(el('h2', '', E([0x1F50A]) + ' Som'));
+  let g = grid(v);
+  g.appendChild(tile({ e: [0x1F509], t: 'Volume -', go: tec('vol_down') })); g.appendChild(tile({ e: [0x1F50A], t: 'Volume +', go: tec('vol_up') })); g.appendChild(tile({ e: [0x1F507], t: 'Mudo', go: tec('mute') }));
+  v.appendChild(el('h2', '', E([0x23EF, 0xFE0F]) + ' Midia'));
+  g = grid(v);
+  g.appendChild(tile({ e: [0x23EE, 0xFE0F], t: 'Anterior', go: tec('prev') })); g.appendChild(tile({ e: [0x23EF, 0xFE0F], t: 'Play / Pause', go: tec('play') })); g.appendChild(tile({ e: [0x23ED, 0xFE0F], t: 'Proxima', go: tec('next') }));
+  v.appendChild(el('h2', '', E([0x2600, 0xFE0F]) + ' Brilho'));
+  const bx = el('div', 'box'); bx.innerHTML = '<div style="font-size:42px;font-weight:800;text-align:center" id="bri">' + BRI + '%</div>'; v.appendChild(bx);
+  const r1 = el('div', 'row'); r1.appendChild(mini('\u2212 10', 'neutral', () => brilho(BRI - 10))); r1.appendChild(mini('+ 10', 'neutral', () => brilho(BRI + 10))); bx.appendChild(r1);
+  const r2 = el('div', 'row'); [25, 50, 75, 100].forEach(n => r2.appendChild(mini(n + '%', 'neutral', () => brilho(n)))); bx.appendChild(r2);
+  v.appendChild(el('h2', '', E([0x1F5A5, 0xFE0F]) + ' Ver e controlar'));
+  g = grid(v);
+  g.appendChild(tile({ e: [0x1F4F8], t: 'Foto da tela', s: 'ver a tela touch agora', arrow: true, go: () => go('midia/foto') }));
+  g.appendChild(tile({ e: [0x1F5B1, 0xFE0F], t: 'Mouse remoto', s: 'mover, clicar, rolar', arrow: true, go: () => go('midia/mouse') }));
+} };
+R['midia/foto'] = { t: 'Foto da tela', e: [0x1F4F8], parent: 'midia', render(v) {
+  const g = grid(v); const img = el('img'); img.id = 'shot';
+  g.appendChild(tile({ e: [0x1F4F8], t: 'Tirar foto agora', cls: 'acc', go: async () => {
+    toast('Tirando foto...');
     const r = await fetch('/api/shot', { headers: { 'X-Token': TOKEN } });
     if (r.status === 401) { pedirToken(); throw new Error('token errado'); }
     if (!r.ok) throw new Error('falhou (' + r.status + ')');
-    const u = URL.createObjectURL(await r.blob()); $('#shot').src = u; $('#shot').style.display = 'block';
-  } catch (e) { toast(String(e.message || e), true); }
-  $('#foto').disabled = false;
-};
-
-// ---- mouse remoto ----
-let pdx = 0, pdy = 0, enviando = false, arrasta = false;
-function mouseSend(o) {
-  return fetch('/api/mouse', { method: 'POST', headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(o) })
-    .then(r => { if (r.status === 401) pedirToken(); }).catch(() => {});
-}
-setInterval(async () => {
-  if (enviando || (!pdx && !pdy)) return;
-  const dx = Math.round(pdx), dy = Math.round(pdy); pdx = 0; pdy = 0;
-  enviando = true; await mouseSend({ dx, dy }); enviando = false;
-}, 40);
-(function () {
-  const pad = $('#pad'); let ult = null, t0 = 0, mov = 0;
+    img.src = URL.createObjectURL(await r.blob()); img.style.display = 'block';
+  } }));
+  v.appendChild(img);
+} };
+let pdx = 0, pdy = 0, mEnv = false, arrasta = false;
+function mouseSend(o) { return fetch('/api/mouse', { method: 'POST', headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(o) }).then(r => { if (r.status === 401) pedirToken(); }).catch(() => {}); }
+setInterval(async () => { if (mEnv || (!pdx && !pdy)) return; const dx = Math.round(pdx), dy = Math.round(pdy); pdx = 0; pdy = 0; mEnv = true; await mouseSend({ dx, dy }); mEnv = false; }, 40);
+R['midia/mouse'] = { t: 'Mouse remoto', e: [0x1F5B1, 0xFE0F], parent: 'midia', render(v) {
+  arrasta = false;
+  const pad = el('div'); pad.id = 'pad'; pad.textContent = 'Arrasta o dedo aqui pra mover o mouse da tela touch. Toque rapido = clique.'; v.appendChild(pad);
+  let ult = null, t0 = 0, mov = 0;
   pad.addEventListener('pointerdown', e => { pad.setPointerCapture(e.pointerId); ult = [e.clientX, e.clientY]; t0 = Date.now(); mov = 0; pad.classList.add('on'); });
-  pad.addEventListener('pointermove', e => {
-    if (!ult) return;
-    const x = e.clientX - ult[0], y = e.clientY - ult[1];
-    ult = [e.clientX, e.clientY]; mov += Math.abs(x) + Math.abs(y);
-    pdx += x * 2; pdy += y * 2;
-  });
+  pad.addEventListener('pointermove', e => { if (!ult) return; const x = e.clientX - ult[0], y = e.clientY - ult[1]; ult = [e.clientX, e.clientY]; mov += Math.abs(x) + Math.abs(y); pdx += x * 2; pdy += y * 2; });
   pad.addEventListener('pointerup', () => { if (!ult) return; ult = null; pad.classList.remove('on'); if (mov < 6 && Date.now() - t0 < 300) mouseSend({ click: 'left' }); });
   pad.addEventListener('pointercancel', () => { ult = null; pad.classList.remove('on'); });
-  $('#mE').onclick = () => mouseSend({ click: 'left' });
-  $('#mD').onclick = () => mouseSend({ click: 'right' });
-  $('#m2').onclick = () => mouseSend({ click: 'double' });
-  $('#sU').onclick = () => mouseSend({ scroll: 3 });
-  $('#sD').onclick = () => mouseSend({ scroll: -3 });
-  $('#mA').onclick = () => { arrasta = !arrasta; mouseSend({ click: arrasta ? 'down' : 'up' }); $('#mA').textContent = 'Arrastar: ' + (arrasta ? 'ON (toca de novo pra soltar)' : 'off'); };
-})();
+  const r = el('div', 'row'); r.appendChild(mini('Esquerdo', 'neutral', () => mouseSend({ click: 'left' }))); r.appendChild(mini('Direito', 'neutral', () => mouseSend({ click: 'right' }))); r.appendChild(mini('Duplo', 'neutral', () => mouseSend({ click: 'double' }))); v.appendChild(r);
+  const r2 = el('div', 'row'); const ar = mini('Arrastar: desligado', 'neutral', () => { arrasta = !arrasta; mouseSend({ click: arrasta ? 'down' : 'up' }); ar.querySelector('b').textContent = arrasta ? 'Arrastar: LIGADO (toca pra soltar)' : 'Arrastar: desligado'; ar.classList.toggle('acc', arrasta); });
+  r2.appendChild(ar); r2.appendChild(mini('Rolar \u25B2', 'neutral', () => mouseSend({ scroll: 3 }))); r2.appendChild(mini('Rolar \u25BC', 'neutral', () => mouseSend({ scroll: -3 }))); v.appendChild(r2);
+} };
 
+/* ---------- ENVIAR ---------- */
+R.enviar = { t: 'Enviar', e: [0x1F4E4], parent: 'inicio', render(v) {
+  const g = grid(v);
+  g.appendChild(tile({ e: [0x1F517], t: 'Link', s: 'abre no navegador da tela touch', go: async () => { const u = await Teclado.abrir({ titulo: 'Link (https://...)', valor: 'https://' }); if (u && u !== 'https://') await post('url', { u: u.trim() }); } }));
+  g.appendChild(tile({ e: [0x1F4C1], t: 'Arquivo', s: 'ate 50 MB, cai em C:\\prisma\\recebidos', go: () => { $('#arq').value = ''; $('#arq').click(); } }));
+  g.appendChild(tile({ e: [0x1F4AC], t: 'Texto ao vivo', s: 'aparece grande na tela touch', arrow: true, go: () => go('enviar/texto') }));
+  g.appendChild(tile({ e: [0x1F4CB], t: 'Area de transferencia', s: 'copiar e colar entre os PCs', arrow: true, go: () => go('enviar/clip') }));
+} };
+$('#arq').onchange = () => {
+  const f = $('#arq').files[0]; if (!f) return;
+  if (f.size > 50 * 1024 * 1024) return toast('Passou de 50 MB', true);
+  toast('Enviando ' + f.name + '...'); const fr = new FileReader();
+  fr.onload = async () => { try { const r = await api('upload', { nome: f.name, b64: String(fr.result).split(',')[1] }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); } };
+  fr.readAsDataURL(f);
+};
+R['enviar/texto'] = { t: 'Texto ao vivo', e: [0x1F4AC], parent: 'enviar', render(v) {
+  const g = grid(v);
+  g.appendChild(tile({ e: [0x270D, 0xFE0F], t: 'Escrever e enviar', cls: 'acc', s: 'aparece na tela de texto', go: async () => { const t = await Teclado.abrir({ titulo: 'Texto pra tela touch', multilinha: true, rapidas: false }); if (t != null) { const r = await api('texto', { t }); toast(r.ok ? 'Enviado' : 'Falhou', !r.ok); } } }));
+  g.appendChild(tile({ e: [0x1F9F9], t: 'Limpar a tela de texto', go: async () => { await api('texto', { t: '' }); toast('Limpo'); } }));
+  g.appendChild(tile({ e: [0x1F5A5, 0xFE0F], t: 'Abrir a tela de texto', s: 'abre na tela touch', go: () => post('acao', { nome: 'abrir_tela' }) }));
+} };
+R['enviar/clip'] = { t: 'Area de transferencia', e: [0x1F4CB], parent: 'enviar', render(v) {
+  const g = grid(v);
+  g.appendChild(tile({ e: [0x2B06, 0xFE0F], t: 'Mandar pra tela touch', s: 'escreve e copia la', cls: 'acc', go: async () => { const t = await Teclado.abrir({ titulo: 'Texto a copiar na tela touch', multilinha: true }); if (t != null) await post('clipset', { t }); } }));
+  g.appendChild(tile({ e: [0x2B07, 0xFE0F], t: 'Pegar da tela touch', s: 'mostra o que ela copiou', go: async () => { const r = await api('clip'); if (r.ok) resultado('Copiado na tela touch', r.t || '(vazio)'); else toast('Falhou', true); } }));
+} };
+
+/* ---------- STATUS ---------- */
+function medidor(t, val, pct, ex) { return '<div class="mt"><b>' + t + '</b><div class="v">' + val + '</div><div class="tr"><i style="width:' + (pct || 0) + '%"></i></div>' + (ex ? '<div class="ex">' + ex + '</div>' : '') + '</div>'; }
+R.status = { t: 'Status', e: [0x1F4CA], parent: 'inicio', render(v) { this.b = el('div', 'box'); this.b.innerHTML = '<div class="meters" id="sis"></div>'; v.appendChild(this.b); this.upd(); }, upd() {
+  const b = this.b; if (!b || !b.isConnected) return; const r = SIS; if (!r) { b.firstChild.innerHTML = '<div class="mt"><b>carregando...</b></div>'; return; }
+  let h = medidor(E([0x1F9E0]) + ' CPU', r.cpu == null ? '...' : r.cpu + '%', r.cpu);
+  h += medidor(E([0x1F4BE]) + ' MEMORIA', r.ram_pct + '%', r.ram_pct, r.ram_livre + ' de ' + r.ram_total + ' GB livres');
+  (r.discos || []).forEach(d => { h += medidor(E([0x1F4BF]) + ' DISCO ' + d.l + ':', d.livre + ' GB livres', Math.round(100 * (d.total - d.livre) / d.total), 'de ' + d.total + ' GB'); });
+  const m = r.uptime_min; h += medidor(E([0x23F1, 0xFE0F]) + ' LIGADA HA', m >= 60 ? Math.floor(m / 60) + ' h ' + (m % 60) + ' min' : m + ' min', 0);
+  b.firstChild.innerHTML = h;
+} };
+
+/* ---------- MACROS ---------- */
+async function mLoad() { try { MAC = await api('macros'); if (cur && (cur === R.macros || cur === R.inicio)) cur.upd ? cur.upd() : 0; } catch (e) {} }
+async function mRoda(m) {
+  let texto = '';
+  if (m.pergunta) { const t = await Teclado.abrir({ titulo: m.pergunta, multilinha: true, rapidas: false }); if (t == null || !t.trim()) return; texto = t; }
+  if (m.confirmar && !(await confirmar('Disparar "' + m.nome + '"?', 'Disparar', 'acc'))) return;
+  toast('Rodando ' + m.nome + '...');
+  const r = await api('macro', { id: m.id, texto });
+  toast(r.ok ? 'Macro ok' : 'Macro falhou', !r.ok);
+  resultado(m.nome, (r.erro || ('HTTP ' + r.status + ' (' + r.ms + ' ms)')) + '\n\n' + (r.corpo || ''));
+}
+R.macros = { t: 'Macros', e: [0x1F39B, 0xFE0F], parent: 'inicio', render(v) { this.g = grid(v); this.v = v; this.upd(); }, upd() {
+  const g = this.g; if (!g || !g.isConnected) return; g.innerHTML = '';
+  MAC.forEach(m => g.appendChild(tile({ e: m.emoji && m.emoji.length ? m.emoji : [0x1F39B, 0xFE0F], t: m.nome, s: m.metodo + (m.confirmar ? '  (pede confirmacao)' : ''), go: () => mRoda(m) })));
+  if (!MAC.length) g.appendChild(el('div', 'vazio', 'Nenhuma macro ainda. Toca em Editar macros.'));
+  g.appendChild(tile({ e: [0x270F, 0xFE0F], t: 'Editar macros', s: 'criar, mudar e apagar', cls: 'acc', arrow: true, go: () => go('macros/editar') }));
+} };
+async function mSalvar(lista) { const r = await api('macros', { macros: lista }); toast(r.msg, r.ok === false); await mLoad(); return r; }
+let MF = null, MFi = -1;
+R['macros/editar'] = { t: 'Editar macros', e: [0x270F, 0xFE0F], parent: 'macros', render(v) {
+  const g = grid(v);
+  MAC.forEach((m, i) => g.appendChild(tile({ e: m.emoji && m.emoji.length ? m.emoji : [0x1F39B, 0xFE0F], t: m.nome, s: m.metodo + ' ' + m.url.replace(/^https?:\/\//, '').slice(0, 40), arrow: true, go: () => { MF = JSON.parse(JSON.stringify(m)); MFi = i; go('macros/form'); } })));
+  g.appendChild(tile({ e: [0x2795], t: 'Nova macro', cls: 'ok', go: () => { MF = { id: '', nome: '', emoji: [0x1F39B, 0xFE0F], metodo: 'GET', url: 'https://', headers: {}, basic: '', corpo: '', pergunta: '', confirmar: false }; MFi = -1; go('macros/form'); } }));
+  g.appendChild(tile({ e: [0x1F4C4], t: 'JSON (avancado)', s: 'colar todas as macros de uma vez', go: async () => { const t = await Teclado.abrir({ titulo: 'JSON das macros', valor: JSON.stringify(MAC), multilinha: true, rapidas: ['{', '}', '[', ']', '"', ':', ','] }); if (t == null) return; let l; try { l = JSON.parse(t); } catch (e) { return toast('JSON invalido', true); } await mSalvar(l); render(); } }));
+} };
+R['macros/form'] = { t: 'Macro', e: [0x270F, 0xFE0F], parent: 'macros/editar', render(v) {
+  if (!MF) { go('macros/editar'); return; }
+  const campo = (rot, val, fn, mono) => tile({ t: rot, s: val || '(vazio)', go: async () => { const t = await Teclado.abrir({ titulo: rot, valor: val === '****' ? '' : val, multilinha: !!mono }); if (t != null) { fn(t); render(); } } });
+  const g = grid(v);
+  g.appendChild(campo('Nome do botao', MF.nome, t => { MF.nome = t.slice(0, 40); }));
+  g.appendChild(campo('URL', MF.url, t => { MF.url = t.trim(); }));
+  const mt = el('div', 'row'); mt.style.gridColumn = '1/-1'; ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].forEach(m => { const b = mini(m, MF.metodo === m ? 'acc' : 'neutral', () => { MF.metodo = m; render(); }); mt.appendChild(b); }); v.appendChild(el('h2', '', 'Metodo')); v.appendChild(mt);
+  v.appendChild(el('h2', '', 'Cabecalhos (ex.: X-Painel-Token)'));
+  Object.keys(MF.headers).forEach(k => {
+    const l = el('div', 'lin');
+    l.appendChild(tile({ t: k, s: MF.headers[k] ? 'valor guardado (****)' : '(sem valor)', go: async () => { const nk = await Teclado.abrir({ titulo: 'Nome do cabecalho', valor: k }); if (nk == null) return; const nv = await Teclado.abrir({ titulo: 'Valor de ' + nk + ' (vazio = manter)', valor: '' }); const old = MF.headers[k]; delete MF.headers[k]; MF.headers[nk.trim()] = (nv == null || nv === '') ? old : nv; render(); } }));
+    l.appendChild(mini(E([0x1F5D1, 0xFE0F]), 'bad', () => { delete MF.headers[k]; render(); })); v.appendChild(l);
+  });
+  const ch = el('div', 'grid'); ch.appendChild(tile({ e: [0x2795], t: 'Adicionar cabecalho', go: async () => { const k = await Teclado.abrir({ titulo: 'Nome do cabecalho', valor: 'X-' }); if (!k || !k.trim()) return; const val = await Teclado.abrir({ titulo: 'Valor de ' + k, valor: '' }); MF.headers[k.trim()] = val || ''; render(); } })); v.appendChild(ch);
+  v.appendChild(el('h2', '', 'Extras'));
+  const g2 = grid(v);
+  g2.appendChild(campo('Usuario:senha (Basic)', MF.basic ? '****' : '', t => { MF.basic = t; }));
+  g2.appendChild(campo('Corpo (JSON, use {{texto}})', MF.corpo, t => { MF.corpo = t; }, true));
+  g2.appendChild(campo('Pergunta (pede texto antes)', MF.pergunta, t => { MF.pergunta = t.slice(0, 60); }));
+  g2.appendChild(tile({ t: 'Pedir confirmacao', cls: MF.confirmar ? 'ok' : 'neutral', s: MF.confirmar ? 'SIM' : 'nao', go: () => { MF.confirmar = !MF.confirmar; render(); } }));
+  const fim = el('div', 'two');
+  fim.appendChild(mini(E([0x1F4BE]) + ' Salvar', 'ok', async () => { if (!MF.nome.trim() || !/^https?:\/\/\S+$/.test(MF.url)) return toast('Precisa de nome e URL (https://...)', true); const l = MAC.slice(); if (MFi >= 0) l[MFi] = MF; else l.push(MF); const r = await mSalvar(l); if (r.ok) { MF = null; go('macros/editar'); } }));
+  if (MFi >= 0) fim.appendChild(mini(E([0x1F5D1, 0xFE0F]) + ' Apagar macro', 'bad', async () => { if (await confirmar('Apagar "' + MF.nome + '"?', 'Apagar')) { const l = MAC.slice(); l.splice(MFi, 1); await mSalvar(l); MF = null; go('macros/editar'); } }));
+  v.appendChild(fim);
+} };
+
+/* ---------- KIOSK ---------- */
+async function kLoad() { try { KCFG = await api('kioskcfg'); } catch (e) {} }
+async function kSalvar() { const r = await api('kioskcfg', KCFG); toast(r.msg, r.ok === false); }
+R.kiosk = { t: 'Kiosk', e: [0x1F5BC, 0xFE0F], parent: 'inicio', render(v) {
+  kLoad().then(() => { if (cur === R.kiosk) { v.innerHTML = ''; R.kiosk.draw(v); } }); R.kiosk.draw(v);
+}, draw(v) {
+  let g = grid(v);
+  g.appendChild(tile({ e: [0x1F5BC, 0xFE0F], t: 'Abrir kiosk na tela touch', s: 'relogio, clima, projetos (2 toques = tela cheia)', cls: 'acc', go: () => post('acao', { nome: 'abrir_kiosk' }) }));
+  g.appendChild(tile({ e: [0x1F326, 0xFE0F], t: 'Cidade do clima', s: KCFG.lat == null ? 'nenhuma escolhida' : 'atual: ' + KCFG.cidade, go: async () => {
+    const q = await Teclado.abrir({ titulo: 'Cidade', valor: KCFG.cidade || '', rapidas: false }); if (!q || !q.trim()) return;
+    const j = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=6&language=pt&name=' + encodeURIComponent(q.trim())).then(r => r.json());
+    if (!j.results) return toast('Nao achei essa cidade', true);
+    folha('mid', (b, close) => { b.appendChild(el('div', 'mq')).textContent = 'Escolhe a cidade'; j.results.forEach(c => { const t = tile({ e: [0x1F4CD], t: c.name, s: (c.admin1 || '') + (c.country ? ', ' + c.country : ''), go: async () => { KCFG.cidade = c.name; KCFG.lat = c.latitude; KCFG.lon = c.longitude; close(); await kSalvar(); render(); } }); t.style.marginTop = '10px'; b.appendChild(t); }); const f = mini('Cancelar', 'neutral', close); f.style.marginTop = '10px'; b.appendChild(f); });
+  } }));
+  v.appendChild(el('h2', '', E([0x1F7E2]) + ' Projetos (bolinha verde ou vermelha)'));
+  (KCFG.projetos || []).forEach((p, i) => {
+    const l = el('div', 'lin');
+    l.appendChild(tile({ t: p.nome, s: p.url, go: async () => { const n = await Teclado.abrir({ titulo: 'Nome do projeto', valor: p.nome, rapidas: false }); if (n == null) return; const u = await Teclado.abrir({ titulo: 'Endereco (https://...)', valor: p.url }); if (u == null) return; KCFG.projetos[i] = { nome: n.trim(), url: u.trim() }; await kSalvar(); render(); } }));
+    l.appendChild(mini(E([0x1F5D1, 0xFE0F]), 'bad', async () => { if (await confirmar('Remover "' + p.nome + '"?', 'Remover')) { KCFG.projetos.splice(i, 1); await kSalvar(); render(); } })); v.appendChild(l);
+  });
+  g = grid(v);
+  g.appendChild(tile({ e: [0x2795], t: 'Adicionar projeto', cls: 'ok', go: async () => { const n = await Teclado.abrir({ titulo: 'Nome do projeto', rapidas: false }); if (!n || !n.trim()) return; const u = await Teclado.abrir({ titulo: 'Endereco (https://...)', valor: 'https://' }); if (!u || !/^https?:\/\/\S+$/.test(u.trim())) return toast('Endereco invalido', true); KCFG.projetos = (KCFG.projetos || []).concat([{ nome: n.trim(), url: u.trim() }]); await kSalvar(); render(); } }));
+} };
+
+/* ---------- SISTEMA ---------- */
+R.sistema = { t: 'Sistema', e: [0x2699, 0xFE0F], parent: 'inicio', render(v) {
+  const g = grid(v);
+  g.appendChild(tile({ e: [0x1F504], t: 'Atualizar painel', s: 'puxa a versao nova do GitHub', go: async () => { const r = await api('acao', { nome: 'atualizar' }); toast(r.msg, r.ok === false); if (r.ok) setTimeout(() => location.reload(), 9000); } }));
+  g.appendChild(tile({ e: [0x1F501], t: 'Reiniciar painel', s: 'so o painel, nao o PC', go: async () => { const r = await api('acao', { nome: 'reiniciar_painel' }); toast(r.msg, r.ok === false); if (r.ok) setTimeout(() => location.reload(), 9000); } }));
+  g.appendChild(tile({ e: [0x1F511], t: 'Trocar token', s: 'digita o novo no teclado', go: async () => { const t = await Teclado.abrir({ titulo: 'Novo token (4 a 32 letras/numeros)', somenteNum: true }); if (!t || !t.trim()) return; if (!(await confirmar('Trocar o token pra "' + t.trim() + '"? O painel reinicia.', 'Trocar', 'acc'))) return; const r = await api('token', { t: t.trim() }); toast(r.msg, r.ok === false); if (r.ok) { TOKEN = t.trim(); try { localStorage.setItem('tk', TOKEN); } catch (e) {} setTimeout(() => location.reload(), 9000); } } }));
+  g.appendChild(tile({ e: [0x1F9F0], t: 'PowerShell', s: 'atalhos e script livre', arrow: true, go: () => go('sistema/ps') }));
+  g.appendChild(tile({ e: [0x1F50C], t: 'Dispositivos de entrada', s: 'teclado, mouse e toque', arrow: true, go: () => go('sistema/devs') }));
+  v.appendChild(el('h2', '', E([0x26A0, 0xFE0F]) + ' Cuidado'));
+  const g2 = grid(v);
+  g2.appendChild(tile({ e: [0x1F501], t: 'Reiniciar o PC', cls: 'bad', s: 'reinicia a tela touch', go: async () => { if (await confirmar('Reiniciar a tela touch?', 'Reiniciar')) await post('acao', { nome: 'reiniciar' }); } }));
+  g2.appendChild(tile({ e: [0x1F50C], t: 'Desligar o PC', cls: 'bad', s: 'desliga a tela touch', go: async () => { if (await confirmar('Desligar a tela touch?', 'Desligar')) await post('acao', { nome: 'desligar' }); } }));
+} };
+const PRESETS = {
+  'Resumo do PC': "Get-CimInstance Win32_OperatingSystem | Select-Object @{n='RAM livre GB';e={[math]::Round($_.FreePhysicalMemory/1MB,1)}}, LastBootUpTime | Format-List\nGet-Volume | Where-Object DriveLetter | Select-Object DriveLetter, @{n='Livre GB';e={[math]::Round($_.SizeRemaining/1GB)}} | Format-Table -AutoSize\nGet-Process | Sort-Object WorkingSet -Descending | Select-Object -First 8 Name, @{n='MB';e={[math]::Round($_.WorkingSet/1MB)}} | Format-Table -AutoSize",
+  'Programas instalados': "Get-ItemProperty 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' | Where-Object DisplayName | Select-Object DisplayName, DisplayVersion | Sort-Object DisplayName | Format-Table -AutoSize",
+  'Tailscale status': "& 'C:\\Program Files\\Tailscale\\tailscale.exe' status",
+  'Log da limpeza': "Get-Content C:\\prisma\\limpeza.log -Tail 40",
+  'Log do vigia': "if (Test-Path C:\\prisma\\painel\\vigia.log) { Get-Content C:\\prisma\\painel\\vigia.log -Tail 20 } else { 'sem log do vigia (tudo certo)' }",
+  'Log do painel': "Get-Content C:\\prisma\\painel\\painel.log -Tail 30"
+};
+R['sistema/ps'] = { t: 'PowerShell', e: [0x1F9F0], parent: 'sistema', render(v) {
+  const out = el('pre'); out.textContent = 'A saida aparece aqui.';
+  async function rodar(script) {
+    if (!script || !script.trim()) return; out.textContent = 'Rodando na tela touch...'; const t0 = Date.now();
+    const tk = setInterval(() => { out.textContent = 'Rodando na tela touch... ' + Math.round((Date.now() - t0) / 1000) + ' s'; }, 1000);
+    try { const r = await api('run', { script }); out.textContent = (r.saida || '(sem saida)') + '\n[codigo de saida: ' + r.codigo + ', ' + r.seg + ' s]'; } catch (e) { out.textContent = 'Erro: ' + (e.message || e); }
+    clearInterval(tk); out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  const g = grid(v);
+  Object.keys(PRESETS).forEach(k => g.appendChild(tile({ e: [0x25B6, 0xFE0F], t: k, go: () => rodar(PRESETS[k]) })));
+  g.appendChild(tile({ e: [0x270D, 0xFE0F], t: 'Script livre', s: 'escrever e executar', cls: 'acc', go: async () => { const s = await Teclado.abrir({ titulo: 'Script PowerShell', multilinha: true, rapidas: ['$', '|', '-', '{', '}', '\\', '"', "'"] }); if (s != null) await rodar(s); } }));
+  v.appendChild(el('h2', '', 'Saida'));
+  v.appendChild(out);
+  const r = el('div', 'row'); r.appendChild(mini(E([0x1F4CB]) + ' Copiar saida', 'neutral', () => { const t = out.textContent; if (!t || t === 'A saida aparece aqui.') return toast('Nada pra copiar', true); copiar(t).then(() => toast('Saida copiada'), () => toast('Nao consegui copiar', true)); })); r.appendChild(mini('Limpar', 'neutral', () => { out.textContent = 'A saida aparece aqui.'; })); v.appendChild(r);
+} };
+R['sistema/devs'] = { t: 'Dispositivos', e: [0x1F50C], parent: 'sistema', render(v) {
+  const g = grid(v); g.appendChild(el('div', 'vazio', 'Carregando lista...'));
+  api('devs').then(l => {
+    g.innerHTML = ''; if (!l.length) g.appendChild(el('div', 'vazio', 'Nenhum dispositivo encontrado.'));
+    l.forEach(d => { const on = d.Status === 'OK'; g.appendChild(tile({ e: [on ? 0x2705 : 0x26D4], t: d.FriendlyName, s: d.Class + (on ? ' - ligado (toca pra desligar)' : ' - desligado (toca pra ligar)'), cls: on ? 'ok' : 'bad', go: async () => { const r = await api('dev', { id: d.InstanceId }); toast(r.msg || 'ok', r.ok === false); R['sistema/devs'].render((v.innerHTML = '', v)); } })); });
+  }).catch(e => { g.innerHTML = ''; g.appendChild(el('div', 'vazio', 'Erro: ' + (e.message || e))); });
+} };
+
+/* ---------- vida: status, sistema, macros ---------- */
+async function refresh() {
+  try { ST = await api('status'); $('#conn').className = 'dot on'; if (cur && cur.upd) cur.upd(); } catch (e) { $('#conn').className = 'dot off'; }
+}
+async function sistema() {
+  if (document.hidden || (cur !== R.inicio && cur !== R.status)) return;
+  try { SIS = await api('sistema'); if (cur.upd) cur.upd(); } catch (e) {}
+}
 if (!TOKEN) pedirToken();
-refresh();
-setInterval(refresh, 8000);
+render(); refresh(); mLoad(); sistema();
+setInterval(refresh, 8000); setInterval(sistema, 3000);
 </script>
 </body>
 </html>
