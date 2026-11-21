@@ -248,6 +248,9 @@ def acao(nome):
     if nome == 'abrir_tela':
         subprocess.Popen('start "" "http://127.0.0.1:' + str(PORT) + '/tela#' + TOKEN + '"', shell=True, creationflags=NOWIN)
         return {'ok': True, 'msg': 'tela de texto aberta na tela touch (duplo toque = tela cheia)'}
+    if nome == 'abrir_kiosk':
+        subprocess.Popen('start "" "http://127.0.0.1:' + str(PORT) + '/kiosk#' + TOKEN + '"', shell=True, creationflags=NOWIN)
+        return {'ok': True, 'msg': 'kiosk aberto na tela touch (duplo toque = tela cheia)'}
     if nome == 'tela_off':
         ctypes.windll.user32.SendMessageW(0xFFFF, 0x0112, 0xF170, 2)
         return {'ok': True, 'msg': 'tela apagada (mexer no mouse acorda)'}
@@ -276,6 +279,42 @@ def acao(nome):
     return {'ok': False, 'msg': 'acao desconhecida'}
 
 
+KIOSK_HTML = r"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Kiosk</title>
+<style>
+html,body{height:100%;margin:0;background:radial-gradient(circle at 30% 20%,#2a1f5c,#0f0d1c 60%);color:#ece9ff;font-family:system-ui,"Segoe UI",sans-serif;overflow:hidden}
+#w{box-sizing:border-box;height:100%;padding:3vh 4vw;display:flex;flex-direction:column;gap:2vh}
+#top{display:flex;justify-content:space-between;align-items:flex-start}
+#hora{font-size:16vh;font-weight:800;line-height:1;letter-spacing:-.02em}
+#data{font-size:3.4vh;color:#b9b4e6;margin-top:1vh;text-transform:capitalize}
+#clima{text-align:right;font-size:3.4vh;color:#b9b4e6}#clima .t{font-size:9vh;font-weight:700;color:#ece9ff}
+#msg{display:none;background:linear-gradient(135deg,#6e46c8,#9b6bff);border-radius:2vh;padding:2.4vh 3vw;font-size:4.6vh;font-weight:700;white-space:pre-wrap;word-break:break-word}
+#proj{display:grid;grid-template-columns:repeat(auto-fill,minmax(22vw,1fr));gap:2vh;margin-top:auto}
+.p{background:#1a1733cc;border:1px solid #2e2a5a;border-radius:2vh;padding:2vh 2vw;font-size:3vh;display:flex;gap:1.2vw;align-items:center}
+.p small{display:block;color:#9a96c4;font-size:2vh}
+.p.off{border-color:#aa3246;background:#3a1420cc}
+</style></head><body><div id="w">
+<div id="top"><div><div id="hora">--:--</div><div id="data"></div></div><div id="clima"></div></div>
+<div id="msg"></div>
+<div id="proj"></div>
+</div>
+<script>
+var TK='';try{TK=localStorage.getItem('tk')||''}catch(e){}
+if(location.hash.length>1){TK=decodeURIComponent(location.hash.slice(1));try{localStorage.setItem('tk',TK)}catch(e){}history.replaceState(null,'',location.pathname)}
+function $(i){return document.getElementById(i)}
+function H(u){return fetch(u,{headers:{'X-Token':TK},cache:'no-store'}).then(function(r){return r.json()})}
+function tick(){var d=new Date();$('hora').textContent=d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});$('data').textContent=d.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}
+setInterval(tick,1000);tick();
+function emo(c){var n=c===0?[0x2600,0xFE0F]:c<=2?[0x1F324,0xFE0F]:c===3?[0x2601,0xFE0F]:c<=48?[0x1F32B,0xFE0F]:c<=57?[0x1F326,0xFE0F]:c<=67?[0x1F327,0xFE0F]:c<=77?[0x2744,0xFE0F]:c<=82?[0x1F327,0xFE0F]:[0x26C8,0xFE0F];return String.fromCodePoint.apply(null,n)}
+function clima(){H('/api/kioskcfg').then(function(c){if(c.lat==null||c.lon==null){$('clima').textContent='';return}
+fetch('https://api.open-meteo.com/v1/forecast?latitude='+c.lat+'&longitude='+c.lon+'&current=temperature_2m,weather_code&timezone=auto').then(function(r){return r.json()}).then(function(j){var k=j.current;$('clima').innerHTML='<div class="t">'+emo(k.weather_code)+' '+Math.round(k.temperature_2m)+'&deg;</div>'+(c.cidade||'')}).catch(function(){})}).catch(function(){})}
+clima();setInterval(clima,600000);
+function proj(){H('/api/projetos').then(function(l){if(!Array.isArray(l))return;$('proj').innerHTML=l.map(function(p){return '<div class="p'+(p.ok?'':' off')+'"><span style="font-size:5vh">'+(p.ok?'&#128994;':'&#128308;')+'</span><div>'+p.nome.replace(/</g,'&lt;')+'<small>'+(p.ok?p.ms+' ms':'FORA DO AR')+'</small></div></div>'}).join('')}).catch(function(){})}
+proj();setInterval(proj,30000);
+function txt(){H('/api/texto').then(function(j){var m=$('msg');if(j.t){m.style.display='block';m.textContent=j.t}else m.style.display='none'}).catch(function(){})}
+txt();setInterval(txt,2000);
+document.addEventListener('dblclick',function(){if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen()});
+</script></body></html>
+"""
 MSG = {'t': ''}
 _cpu = {'v': None}
 
@@ -422,6 +461,68 @@ def clip_get():
     return {'ok': rc == 0, 't': out.rstrip('\r\n')[:200000]}
 
 
+KIOSK_CFG = os.path.join(BASE, 'kiosk.json')
+_proj = {'t': 0, 'v': []}
+
+
+def kiosk_cfg():
+    try:
+        with open(KIOSK_CFG, encoding='utf-8') as f:
+            c = json.load(f)
+    except Exception:
+        c = {}
+    return {'cidade': str(c.get('cidade', ''))[:80], 'lat': c.get('lat'), 'lon': c.get('lon'),
+            'projetos': c.get('projetos') if isinstance(c.get('projetos'), list) else []}
+
+
+def kiosk_salvar(d):
+    proj = []
+    for p in (d.get('projetos') or [])[:20]:
+        nome = str(p.get('nome', '')).strip()[:40]
+        url = str(p.get('url', '')).strip()
+        if nome and re.match(r'^https?://[^\s]+$', url) and len(url) <= 500:
+            proj.append({'nome': nome, 'url': url})
+    lat, lon = d.get('lat'), d.get('lon')
+    try:
+        lat = float(lat) if lat is not None else None
+        lon = float(lon) if lon is not None else None
+    except Exception:
+        lat = lon = None
+    cfg = {'cidade': str(d.get('cidade', ''))[:80], 'lat': lat, 'lon': lon, 'projetos': proj}
+    with open(KIOSK_CFG, 'w', encoding='utf-8') as f:
+        json.dump(cfg, f, ensure_ascii=True)
+    _proj['t'] = 0
+    return {'ok': True, 'msg': 'kiosk salvo (' + str(len(proj)) + ' projetos)'}
+
+
+def projetos():
+    if time.time() - _proj['t'] < 15:
+        return _proj['v']
+    import urllib.request, urllib.error
+    itens = kiosk_cfg()['projetos']
+    res = [None] * len(itens)
+
+    def testa(i, p):
+        t0 = time.time()
+        try:
+            rq = urllib.request.Request(p['url'], headers={'User-Agent': 'painel-tela-touch'})
+            with urllib.request.urlopen(rq, timeout=5) as r:
+                ok = r.status < 500
+        except urllib.error.HTTPError as e:
+            ok = e.code < 500
+        except Exception:
+            ok = False
+        res[i] = {'nome': p['nome'], 'url': p['url'], 'ok': ok, 'ms': int((time.time() - t0) * 1000)}
+    ths = [threading.Thread(target=testa, args=(i, p)) for i, p in enumerate(itens)]
+    for t in ths:
+        t.start()
+    for t in ths:
+        t.join(8)
+    _proj['v'] = [r for r in res if r]
+    _proj['t'] = time.time()
+    return _proj['v']
+
+
 def trocar_token(d):
     t = str(d.get('t', ''))
     if not re.match(r'^[A-Za-z0-9]{4,32}$', t):
@@ -504,6 +605,16 @@ class H(BaseHTTPRequestHandler):
             if rota in ('/', '/index.html'):
                 with open(os.path.join(BASE, 'index.html'), 'rb') as f:
                     self._send(200, f.read(), 'text/html')
+            elif rota == '/kiosk':
+                self._send(200, KIOSK_HTML, 'text/html')
+            elif rota == '/api/kioskcfg':
+                if not self._auth():
+                    return self._send(401, {'erro': 'token errado'})
+                self._send(200, kiosk_cfg())
+            elif rota == '/api/projetos':
+                if not self._auth():
+                    return self._send(401, {'erro': 'token errado'})
+                self._send(200, projetos())
             elif rota == '/tela':
                 self._send(200, TELA_HTML, 'text/html')
             elif rota == '/api/texto':
@@ -561,6 +672,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, toggle(d.get('tipo')))
             elif rota == '/api/acao':
                 self._send(200, acao(d.get('nome')))
+            elif rota == '/api/kioskcfg':
+                self._send(200, kiosk_salvar(d))
             elif rota == '/api/url':
                 self._send(200, abrir_url(d))
             elif rota == '/api/upload':

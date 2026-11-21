@@ -87,6 +87,16 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
   <div class="row"><button class="b" id="clipset">&#11014;&#65039; Mandar pra tela touch</button><button class="b alt" id="clipget">&#11015;&#65039; Pegar da tela touch</button></div>
 </div>
 
+<h2>&#128444;&#65039; Configurar o kiosk</h2>
+<div class="box">
+  <b style="font-size:13px;color:var(--mut)">&#127780;&#65039; CIDADE DO CLIMA <span id="kinfo"></span></b>
+  <div class="row" style="margin-top:6px"><input id="kcid" type="text" placeholder="ex.: Sao Paulo" style="flex:1;min-width:180px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;font-size:15px"><button class="b alt" id="kbusca">Buscar</button></div>
+  <div class="chips" id="kres" style="margin-top:8px"></div>
+  <b style="display:block;margin-top:12px;font-size:13px;color:var(--mut)">&#128994; PROJETOS (um por linha: Nome | https://endereco)</b>
+  <textarea id="kproj" style="height:110px;margin-top:6px;font:14px ui-monospace,Consolas,monospace" placeholder="Hermes OS | https://..."></textarea>
+  <div class="row"><button class="b" id="ksalva">&#128190; Salvar kiosk</button></div>
+</div>
+
 <h2>&#127911; Som, midia e brilho</h2>
 <div class="box">
   <div class="row" style="margin-top:0">
@@ -213,6 +223,7 @@ const CARDS = [
   { e: [0x1F446], nome: 'Touchscreen', f: s => tri(s.touchscreen), go: () => api('toggle', { tipo: 'touchscreen' }) },
   { e: [0x1F524], nome: 'Teclado na tela', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'osk' }) },
   { e: [0x1F4AC], nome: 'Tela de texto', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'abrir_tela' }) },
+  { e: [0x1F5BC, 0xFE0F], nome: 'Kiosk', f: () => ['neutral', 'relogio, clima e projetos na tela touch'], go: () => api('acao', { nome: 'abrir_kiosk' }) },
   { e: [0x1F504], nome: 'Atualizar painel', f: () => ['neutral', 'puxa a versao nova do GitHub'], go: async () => { const r = await api('acao', { nome: 'atualizar' }); if (r.ok) { toast('Reiniciando...'); setTimeout(() => location.reload(), 7000); } return r; } },
   { e: [0x1F501], nome: 'Reiniciar painel', f: () => ['neutral', 'so o painel, nao o PC'], go: async () => { const r = await api('acao', { nome: 'reiniciar_painel' }); if (r.ok) setTimeout(() => location.reload(), 7000); return r; } },
   { e: [0x1F511], nome: 'Trocar token', f: () => ['neutral', 'digita o novo no teclado numerico'], go: () => { NOVO = true; $('#mtit').textContent = 'Novo token (4 a 32 numeros)'; $('#tk').value = ''; pedirToken(); } },
@@ -317,6 +328,32 @@ $('#det').addEventListener('toggle', async () => {
     $('#devs').innerHTML = '<tr><td>Erro: ' + (e.message || e) + '</td></tr>';
   }
 });
+
+// ---- configurar kiosk ----
+let KCFG = { cidade: '', lat: null, lon: null, projetos: [] };
+function kInfo() { $('#kinfo').textContent = KCFG.lat == null ? '(nenhuma escolhida)' : '(atual: ' + KCFG.cidade + ')'; }
+async function kLoad() {
+  try { KCFG = await api('kioskcfg'); $('#kcid').value = KCFG.cidade || ''; $('#kproj').value = (KCFG.projetos || []).map(p => p.nome + ' | ' + p.url).join('\n'); kInfo(); } catch (e) {}
+}
+$('#kbusca').onclick = async () => {
+  const q = $('#kcid').value.trim(); if (!q) return;
+  $('#kres').innerHTML = '';
+  try {
+    const j = await fetch('https://geocoding-api.open-meteo.com/v1/search?count=5&language=pt&name=' + encodeURIComponent(q)).then(r => r.json());
+    if (!j.results) return toast('Nao achei essa cidade', true);
+    j.results.forEach(c => {
+      const ch = document.createElement('span'); ch.className = 'chip';
+      ch.textContent = c.name + (c.admin1 ? ' - ' + c.admin1 : '') + (c.country ? ', ' + c.country : '');
+      ch.onclick = () => { KCFG.cidade = c.name; KCFG.lat = c.latitude; KCFG.lon = c.longitude; $('#kcid').value = c.name; $('#kres').innerHTML = ''; kInfo(); toast('Cidade escolhida. Falta salvar.'); };
+      $('#kres').appendChild(ch);
+    });
+  } catch (e) { toast('Busca falhou: ' + (e.message || e), true); }
+};
+$('#ksalva').onclick = async () => {
+  const projetos = $('#kproj').value.split('\n').map(l => l.split('|')).filter(a => a.length >= 2).map(a => ({ nome: a[0].trim(), url: a.slice(1).join('|').trim() }));
+  try { const r = await api('kioskcfg', { cidade: KCFG.cidade, lat: KCFG.lat, lon: KCFG.lon, projetos }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); }
+};
+kLoad();
 
 // ---- enviar pra tela touch ----
 $('#urlgo').onclick = async () => { try { const r = await api('url', { u: $('#url').value.trim() }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); } };
