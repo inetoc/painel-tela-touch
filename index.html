@@ -170,6 +170,13 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
   <div id="mstat" style="margin-top:10px;font-size:14px;color:var(--mut)">...</div>
 </div>
 
+<h2>&#129529; Limpeza do computador (Destravar)</h2>
+<div class="box">
+  <div class="meters" id="pcmet"><div class="mt"><b>carregando...</b></div></div>
+  <div class="row"><button class="b" id="pcdestrava">&#129529; Destravar</button><button class="b alt" id="pcrec">&#128260; Atualizar</button></div>
+  <div id="pcres" style="margin-top:10px;font-size:14px;color:var(--mut)">Libera memoria e encerra so o que voce deixou na lista (nunca Sunshine, Tailscale ou o agente).</div>
+</div>
+
 <h2>&#127899;&#65039; Macros</h2>
 <div class="grid" id="macrogrid"></div>
 <pre id="mout" style="margin-top:12px">O resultado da macro aparece aqui.</pre>
@@ -466,6 +473,25 @@ async function somLoad() {
 $('#somrec').onclick = somLoad;
 $('#somsalva').onclick = async () => { try { const r = await api('somcfg', { host: $('#somhost').value.trim(), token: $('#somtk').value.trim() }); toast(r.msg, r.ok === false); $('#somtk').value = ''; somLoad(); } catch (e) { toast(String(e.message || e), true); } };
 
+// ---- limpeza do computador ----
+async function pcLoad() {
+  try {
+    const r = await api('pc');
+    if (r.erro) { $('#pcmet').innerHTML = '<div class="mt"><b>' + r.erro + '</b></div>'; return; }
+    let h = medidor('&#129504; CPU', r.cpu == null ? '...' : r.cpu + '%', r.cpu);
+    h += medidor('&#128190; MEMORIA', r.ram_pct + '%', r.ram_pct, r.ram_livre + ' de ' + r.ram_total + ' GB livres');
+    if (r.disco) h += medidor('&#128191; DISCO C:', r.disco.livre + ' GB livres', Math.round(100 * (r.disco.total - r.disco.livre) / r.disco.total), 'de ' + r.disco.total + ' GB');
+    $('#pcmet').innerHTML = h;
+  } catch (e) { $('#pcmet').innerHTML = '<div class="mt"><b>Erro: ' + (e.message || e) + '</b></div>'; }
+}
+$('#pcrec').onclick = pcLoad;
+$('#pcdestrava').onclick = async () => {
+  if (!confirm('Destravar o computador agora? Libera memoria e encerra so o que voce deixou na lista.')) return;
+  $('#pcres').textContent = 'Destravando...';
+  try { const r = await api('destravar', {}); $('#pcres').textContent = r.msg || (r.ok ? 'ok' : 'falhou'); toast(r.ok === false ? (r.msg || 'Falhou') : 'Pronto', r.ok === false); pcLoad(); }
+  catch (e) { $('#pcres').textContent = 'Erro: ' + (e.message || e); toast('Erro', true); }
+};
+
 // ---- monitor extra ----
 async function monLoad() {
   try {
@@ -476,7 +502,7 @@ async function monLoad() {
   } catch (e) {}
 }
 $('#msalvah').onclick = async () => { try { const r = await api('monitorcfg', { host: $('#mhost').value.trim() }); toast(r.msg, r.ok === false); monLoad(); } catch (e) { toast(String(e.message || e), true); } };
-setInterval(() => { if (MODO === 'painel' && !document.hidden) monLoad(); }, 10000);
+setInterval(() => { if (MODO === 'painel' && !document.hidden) { monLoad(); pcLoad(); } }, 10000);
 
 // ---- configurar kiosk ----
 let KCFG = { cidade: '', lat: null, lon: null, projetos: [] };
@@ -585,7 +611,7 @@ function setModo(m, salvar) {
   $('#mb-tela').classList.toggle('on', MODO === 'tela'); $('#mb-painel').classList.toggle('on', MODO === 'painel');
   $('#tit').textContent = MODO === 'tela' ? 'Controlando a tela touch' : 'Painel';
   if (salvar) { try { localStorage.setItem('modo', MODO); } catch (e) {} try { history.replaceState(null, '', '#/' + MODO); } catch (e) {} window.scrollTo(0, 0); }
-  if (MODO === 'painel') { somLoad(); monLoad(); } else { sistema(); }
+  if (MODO === 'painel') { somLoad(); monLoad(); pcLoad(); } else { sistema(); }
 }
 $('#mb-tela').onclick = () => setModo('tela', true);
 $('#mb-painel').onclick = () => setModo('painel', true);
