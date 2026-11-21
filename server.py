@@ -898,10 +898,10 @@ class H(BaseHTTPRequestHandler):
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
                 self._send(200, som_cfg_publico())
-            elif rota == '/api/pc':
+            elif rota == '/api/destrava':
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
-                self._send(200, som_chamar('/api/pc'))
+                self._send(200, som_chamar('/api/destrava'))
             elif rota == '/api/som':
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
@@ -967,8 +967,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, monitor_salvar(d))
             elif rota == '/api/somcfg':
                 self._send(200, som_salvar(d))
-            elif rota == '/api/destravar':
-                r = som_chamar('/api/destravar', {})
+            elif rota == '/api/destravabotao':
+                r = som_chamar('/api/destrava/botao', {'botao': str(d.get('botao', ''))})
                 if 'erro' in r and 'msg' not in r:
                     r['msg'] = r['erro']
                 self._send(200, r)

@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 # Agente de som do computador oficial. So audio: listar dispositivos, escolher padrao, volume e mudo.
 # Python padrao + modulo PowerShell AudioDeviceCmdlets. Escuta so em 127.0.0.1 e no IP do Tailscale.
-import json, os, re, sys, time, hmac, secrets, threading, subprocess, shutil, ctypes
-import ctypes.wintypes
+import json, os, re, sys, time, hmac, secrets, threading, subprocess
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -86,119 +85,116 @@ def mudo(d):
     return {'ok': rc == 0, 'msg': ('mudo' if d.get('on') else 'som ligado') if rc == 0 else 'falhou: ' + (err or out)[:150]}
 
 
-# ---------------- status do computador e limpeza segura ----------------
-_cpu = {'v': None}
+# ---------------- Destrava PC (le os numeros e aperta os botoes do proprio programa) ----------------
 _ult = {'t': 0.0}
-DESTRAVAR_CFG = os.path.join(BASE, 'destravar.json')
-# nunca encerrados, mesmo que estejam na lista do usuario
-PROTEGIDOS = {'sunshine', 'sunshinesvc', 'tailscaled', 'tailscale-ipn', 'tailscale', 'explorer', 'destravapc', 'system',
-              'svchost', 'winlogon', 'csrss', 'lsass', 'services', 'wininit', 'dwm', 'smss', 'pythonw', 'python', 'powershell'}
-NOME_OK = re.compile(r'^[A-Za-z0-9._\- ]{1,60}$')
+DESTRAVA_EXE = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'DestravaPC', 'DestravaPC.exe')
+BOTOES = {'destravar': 'Destravar', 'lista': 'Ver lista'}
+
+UIA_COMUM = r"""
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+$p = Get-Process DestravaPC -ErrorAction SilentlyContinue | Select-Object -First 1
+$raiz = [System.Windows.Automation.AutomationElement]::RootElement
+"""
+
+PS_LER = UIA_COMUM + r"""
+if (-not $p) { '{"rodando":false}'; exit }
+$cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $p.Id)
+$t = @()
+foreach ($j in $raiz.FindAll([System.Windows.Automation.TreeScope]::Children, $cond)) {
+  foreach ($e in $j.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition)) {
+    if ($e.Current.ControlType.ProgrammaticName -eq 'ControlType.Text') { $t += $e.Current.Name }
+  }
+}
+[pscustomobject]@{ rodando = $true; textos = @($t) } | ConvertTo-Json -Compress
+"""
+
+PS_CLICAR = UIA_COMUM + r"""
+$nome = '@@NOME@@'
+if (-not $p) { 'FECHADO'; exit }
+$cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $p.Id)
+$cb = New-Object System.Windows.Automation.AndCondition((New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, $nome)), (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Button)))
+foreach ($j in $raiz.FindAll([System.Windows.Automation.TreeScope]::Children, $cond)) {
+  $b = $j.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cb)
+  if ($b) { $b.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); 'OK'; exit }
+}
+'NAOACHEI'
+"""
 
 
-class _FT(ctypes.Structure):
-    _fields_ = [('lo', ctypes.wintypes.DWORD), ('hi', ctypes.wintypes.DWORD)]
+def ps_puro(cmd, timeout=30):
+    p = subprocess.run(['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command',
+                        "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; " + cmd],
+                       capture_output=True, timeout=timeout, creationflags=NOWIN)
+    return p.stdout.decode('utf-8', 'replace').strip(), p.stderr.decode('utf-8', 'replace').strip(), p.returncode
 
 
-class _MEM(ctypes.Structure):
-    _fields_ = [('len', ctypes.wintypes.DWORD), ('load', ctypes.wintypes.DWORD),
-                ('tot', ctypes.c_ulonglong), ('av', ctypes.c_ulonglong),
-                ('ptot', ctypes.c_ulonglong), ('pav', ctypes.c_ulonglong),
-                ('vtot', ctypes.c_ulonglong), ('vav', ctypes.c_ulonglong), ('ext', ctypes.c_ulonglong)]
-
-
-def pc():
-    k = ctypes.windll.kernel32
-    i, ke, us = _FT(), _FT(), _FT()
-    k.GetSystemTimes(ctypes.byref(i), ctypes.byref(ke), ctypes.byref(us))
-    idle = (i.hi << 32) | i.lo
-    tot = ((ke.hi << 32) | ke.lo) + ((us.hi << 32) | us.lo)
-    ult = _cpu['v']
-    _cpu['v'] = (idle, tot)
-    cpu = None
-    if ult and tot - ult[1] > 0:
-        cpu = max(0, min(100, round(100 * (1 - (idle - ult[0]) / (tot - ult[1])))))
-    m = _MEM()
-    m.len = ctypes.sizeof(m)
-    k.GlobalMemoryStatusEx(ctypes.byref(m))
+def _n(x):
     try:
-        d = shutil.disk_usage('C:\\')
-        disco = {'livre': round(d.free / 2**30, 1), 'total': round(d.total / 2**30)}
+        return float(str(x).replace('.', '').replace(',', '.')) if ',' in str(x) else float(x)
     except Exception:
-        disco = None
-    return {'cpu': cpu, 'ram_pct': m.load, 'ram_livre': round(m.av / 2**30, 1), 'ram_total': round(m.tot / 2**30, 1), 'disco': disco}
+        return None
 
 
-def destravar_cfg():
-    try:
-        with open(DESTRAVAR_CFG, encoding='utf-8') as f:
-            c = json.load(f)
-    except Exception:
-        c = {}
-    enc = [str(x).strip() for x in (c.get('encerrar') or []) if isinstance(x, str)]
-    cmd = c.get('comando') if isinstance(c.get('comando'), list) else None
-    return {'encerrar': enc[:30], 'comando': [str(x) for x in cmd][:10] if cmd else None}
+def interpreta(textos):
+    l1 = next((t for t in textos if re.match(r'^\s*CPU\s+\d+\s*%', t) and 'RAM' in t), None)
+    l2 = next((t for t in textos if 'ferramentas por tr' in t), None)
+    r = {'rodando': True, 'linha1': l1, 'linha2': l2, 'cpu': None, 'ram_pct': None, 'ram_livre': None, 'ferramentas': None, 'disco_livre': None}
+    if l1:
+        m = re.search(r'CPU\s+(\d+)\s*%', l1)
+        r['cpu'] = int(m.group(1)) if m else None
+        m = re.search(r'RAM\s+(\d+)\s*%', l1)
+        r['ram_pct'] = int(m.group(1)) if m else None
+        m = re.search(r'\(([\d.,]+)\s*GB livres\)', l1)
+        r['ram_livre'] = _n(m.group(1)) if m else None
+    if l2:
+        m = re.search(r'(\d+)\s+ferramentas', l2)
+        r['ferramentas'] = int(m.group(1)) if m else None
+        m = re.search(r'Disco C:\s*([\d.,]+)\s*GB', l2)
+        r['disco_livre'] = _n(m.group(1)) if m else None
+    return r
 
 
-def liberar_memoria():
-    k, pa = ctypes.windll.kernel32, ctypes.windll.psapi
-    k.OpenProcess.restype = ctypes.c_void_p
-    arr = (ctypes.wintypes.DWORD * 4096)()
-    n = ctypes.wintypes.DWORD()
-    pa.EnumProcesses(arr, ctypes.sizeof(arr), ctypes.byref(n))
-    cont = 0
-    for pid in list(arr)[:n.value // 4]:
-        if not pid:
-            continue
-        h = k.OpenProcess(0x0100 | 0x0400, False, pid)  # PROCESS_SET_QUOTA | PROCESS_QUERY_INFORMATION
-        if h:
-            if pa.EmptyWorkingSet(ctypes.c_void_p(h)):
-                cont += 1
-            k.CloseHandle(ctypes.c_void_p(h))
-    return cont
+def destrava_ler():
+    out, err, rc = ps_puro(PS_LER)
+    if rc != 0 or not out:
+        raise RuntimeError('nao consegui ler o Destrava PC: ' + (err or out)[:200])
+    j = json.loads(out.splitlines()[-1])
+    if not j.get('rodando'):
+        return {'rodando': False}
+    t = j.get('textos') or []
+    return interpreta(t if isinstance(t, list) else [t])
 
 
-def encerrar_lista(nomes):
-    feitos, recusados = [], []
-    for nome in nomes:
-        base = nome.lower()
-        if base.endswith('.exe'):
-            base = base[:-4]
-        if not NOME_OK.match(nome) or base in PROTEGIDOS:
-            recusados.append(nome)
-            continue
-        r = subprocess.run(['taskkill', '/IM', nome if nome.lower().endswith('.exe') else nome + '.exe', '/F'],
-                           capture_output=True, creationflags=NOWIN, timeout=20)
-        if r.returncode == 0:
-            feitos.append(nome)
-    return feitos, recusados
-
-
-def destravar():
-    agora = time.time()
-    if agora - _ult['t'] < 30:
-        return {'ok': False, 'msg': 'espera uns segundos antes de destravar de novo'}
-    _ult['t'] = agora
-    antes = pc()
-    cfg = destravar_cfg()
-    extra = ''
-    if cfg['comando']:
-        try:
-            r = subprocess.run(cfg['comando'], capture_output=True, creationflags=NOWIN, timeout=120)
-            extra = ' | comando externo: codigo ' + str(r.returncode)
-        except Exception as e:
-            extra = ' | comando externo falhou: ' + str(e)[:80]
-    feitos, recusados = encerrar_lista(cfg['encerrar'])
-    n = liberar_memoria()
-    time.sleep(1.5)
-    depois = pc()
-    log('destravar: ram ' + str(antes['ram_pct']) + '% -> ' + str(depois['ram_pct']) + '%, encerrados ' + str(feitos) + ', recusados ' + str(recusados))
-    msg = 'RAM ' + str(antes['ram_pct']) + '% -> ' + str(depois['ram_pct']) + '% (' + str(antes['ram_livre']) + ' -> ' + str(depois['ram_livre']) + ' GB livres)'
-    if feitos:
-        msg += ' | encerrados: ' + ', '.join(feitos)
-    if recusados:
-        msg += ' | protegidos/ignorados: ' + ', '.join(recusados)
-    return {'ok': True, 'msg': msg + extra, 'antes': antes, 'depois': depois, 'processos_aliviados': n, 'encerrados': feitos}
+def destrava_botao(nome):
+    if nome == 'abrir':
+        if not os.path.exists(DESTRAVA_EXE):
+            return {'ok': False, 'msg': 'nao achei o Destrava PC em ' + DESTRAVA_EXE}
+        subprocess.Popen([DESTRAVA_EXE], close_fds=True)
+        return {'ok': True, 'msg': 'abrindo o Destrava PC no computador'}
+    rot = BOTOES.get(nome)
+    if not rot:
+        return {'ok': False, 'msg': 'botao desconhecido'}
+    if nome == 'destravar':
+        agora = time.time()
+        if agora - _ult['t'] < 30:
+            return {'ok': False, 'msg': 'espera uns segundos antes de destravar de novo'}
+        _ult['t'] = agora
+    antes = destrava_ler()
+    if not antes.get('rodando'):
+        return {'ok': False, 'msg': 'o Destrava PC esta fechado, abre ele primeiro'}
+    out, err, rc = ps_puro(PS_CLICAR.replace('@@NOME@@', rot))
+    r = out.splitlines()[-1] if out else ''
+    log('destrava botao ' + nome + ' -> ' + r)
+    if r != 'OK':
+        return {'ok': False, 'msg': 'nao consegui apertar "' + rot + '" (' + (r or err[:80]) + ')'}
+    if nome == 'lista':
+        return {'ok': True, 'msg': 'lista aberta no computador'}
+    time.sleep(4)
+    depois = destrava_ler()
+    msg = 'Destravar apertado'
+    if antes.get('linha1') and depois.get('linha1'):
+        msg += ' | antes: ' + antes['linha1'] + ' | depois: ' + depois['linha1']
+    return {'ok': True, 'msg': msg, 'antes': antes, 'depois': depois}
 
 
 class H(BaseHTTPRequestHandler):
@@ -226,8 +222,8 @@ class H(BaseHTTPRequestHandler):
         try:
             if self.path.split('?')[0] == '/api/dispositivos':
                 self._send(200, dispositivos())
-            elif self.path.split('?')[0] == '/api/pc':
-                self._send(200, pc())
+            elif self.path.split('?')[0] == '/api/destrava':
+                self._send(200, destrava_ler())
             else:
                 self._send(404, {'erro': 'nao existe'})
         except Exception as e:
@@ -247,8 +243,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, volume(d))
             elif r == '/api/mudo':
                 self._send(200, mudo(d))
-            elif r == '/api/destravar':
-                self._send(200, destravar())
+            elif r == '/api/destrava/botao':
+                self._send(200, destrava_botao(str(d.get('botao', ''))))
             else:
                 self._send(404, {'erro': 'nao existe'})
         except Exception as e:

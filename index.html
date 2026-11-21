@@ -62,6 +62,19 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
 #pad{height:230px;border:2px dashed var(--acc);border-radius:14px;background:#07060f;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px;text-align:center;padding:10px}
 #pad.on{background:#120f26}
 [hidden]{display:none!important}
+.dw{background:#161a23;border:1px solid #2b3140;border-radius:18px;padding:16px 18px;margin:24px 0 8px;box-shadow:0 8px 24px #0006}
+.dw-top{display:flex;align-items:center;gap:10px;font-size:20px;color:#fff}
+.dw-dot{width:14px;height:14px;border-radius:50%;background:#f59f0b;flex:none}
+.dw-l1{margin-top:12px;font-size:17px;color:#e9ecf3}
+.dw-bar{height:10px;border-radius:6px;background:#2a2f3b;margin:10px 0 8px;overflow:hidden}
+.dw-bar i{display:block;height:100%;width:0;background:#f59f0b;border-radius:6px;transition:width .5s,background .5s}
+.dw-l2{font-size:14px;color:#9aa3b5}
+.dw-btns{display:flex;gap:12px;margin-top:14px}
+.dw-btns button{flex:1;min-height:60px;border:0;border-radius:12px;color:#fff;font:inherit;font-size:19px;font-weight:700;cursor:pointer;touch-action:manipulation}
+.dw-g{background:#16a34a}.dw-a{background:#2563eb}
+.dw-btns button:active{filter:brightness(1.2);transform:scale(.97)}
+.dw-btns button:disabled{opacity:.55}
+.dw-msg{margin-top:10px;font-size:13px;color:#9aa3b5;min-height:1em;word-break:break-word}
 .modos{display:flex;gap:10px;margin:0 0 16px}
 .modos button{flex:1;min-height:64px;border:0;border-radius:16px;background:var(--neu);color:#fff;font:inherit;cursor:pointer;touch-action:manipulation;padding:8px 12px;text-align:center}
 .modos button b{display:block;font-size:19px}
@@ -170,11 +183,13 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
   <div id="mstat" style="margin-top:10px;font-size:14px;color:var(--mut)">...</div>
 </div>
 
-<h2>&#129529; Limpeza do computador (Destravar)</h2>
-<div class="box">
-  <div class="meters" id="pcmet"><div class="mt"><b>carregando...</b></div></div>
-  <div class="row"><button class="b" id="pcdestrava">&#129529; Destravar</button><button class="b alt" id="pcrec">&#128260; Atualizar</button></div>
-  <div id="pcres" style="margin-top:10px;font-size:14px;color:var(--mut)">Libera memoria e encerra so o que voce deixou na lista (nunca Sunshine, Tailscale ou o agente).</div>
+<div class="dw" id="dw">
+  <div class="dw-top"><span class="dw-dot" id="dwdot"></span><b>Destrava PC</b></div>
+  <div class="dw-l1" id="dwl1">carregando...</div>
+  <div class="dw-bar"><i id="dwbar"></i></div>
+  <div class="dw-l2" id="dwl2"></div>
+  <div class="dw-btns"><button class="dw-g" id="dwgo">Destravar</button><button class="dw-a" id="dwlist">Ver lista</button></div>
+  <div class="dw-msg" id="dwmsg"></div>
 </div>
 
 <h2>&#127899;&#65039; Macros</h2>
@@ -473,24 +488,33 @@ async function somLoad() {
 $('#somrec').onclick = somLoad;
 $('#somsalva').onclick = async () => { try { const r = await api('somcfg', { host: $('#somhost').value.trim(), token: $('#somtk').value.trim() }); toast(r.msg, r.ok === false); $('#somtk').value = ''; somLoad(); } catch (e) { toast(String(e.message || e), true); } };
 
-// ---- limpeza do computador ----
-async function pcLoad() {
+// ---- Destrava PC (controle remoto do programa do computador) ----
+async function dwLoad() {
   try {
-    const r = await api('pc');
-    if (r.erro) { $('#pcmet').innerHTML = '<div class="mt"><b>' + r.erro + '</b></div>'; return; }
-    let h = medidor('&#129504; CPU', r.cpu == null ? '...' : r.cpu + '%', r.cpu);
-    h += medidor('&#128190; MEMORIA', r.ram_pct + '%', r.ram_pct, r.ram_livre + ' de ' + r.ram_total + ' GB livres');
-    if (r.disco) h += medidor('&#128191; DISCO C:', r.disco.livre + ' GB livres', Math.round(100 * (r.disco.total - r.disco.livre) / r.disco.total), 'de ' + r.disco.total + ' GB');
-    $('#pcmet').innerHTML = h;
-  } catch (e) { $('#pcmet').innerHTML = '<div class="mt"><b>Erro: ' + (e.message || e) + '</b></div>'; }
+    const r = await api('destrava');
+    if (r.erro) { $('#dwl1').textContent = r.erro; $('#dwl2').textContent = ''; $('#dwbar').style.width = '0'; return; }
+    if (r.rodando === false) {
+      $('#dwl1').textContent = 'O Destrava PC esta fechado no computador'; $('#dwl2').textContent = '';
+      $('#dwbar').style.width = '0'; $('#dwdot').style.background = '#6b7280';
+      $('#dwgo').textContent = 'Abrir Destrava PC'; $('#dwgo').dataset.abrir = '1'; return;
+    }
+    $('#dwgo').textContent = 'Destravar'; delete $('#dwgo').dataset.abrir;
+    $('#dwl1').textContent = r.linha1 || 'sem leitura da janelinha (abre a janelinha pequena do Destrava PC)';
+    $('#dwl2').textContent = r.linha2 || '';
+    const p = r.ram_pct == null ? 0 : r.ram_pct;
+    $('#dwbar').style.width = p + '%';
+    const cor = p >= 85 ? '#ef4444' : p >= 60 ? '#f59f0b' : '#22c55e';
+    $('#dwbar').style.background = cor; $('#dwdot').style.background = cor;
+  } catch (e) { $('#dwl1').textContent = 'Erro: ' + (e.message || e); }
 }
-$('#pcrec').onclick = pcLoad;
-$('#pcdestrava').onclick = async () => {
-  if (!confirm('Destravar o computador agora? Libera memoria e encerra so o que voce deixou na lista.')) return;
-  $('#pcres').textContent = 'Destravando...';
-  try { const r = await api('destravar', {}); $('#pcres').textContent = r.msg || (r.ok ? 'ok' : 'falhou'); toast(r.ok === false ? (r.msg || 'Falhou') : 'Pronto', r.ok === false); pcLoad(); }
-  catch (e) { $('#pcres').textContent = 'Erro: ' + (e.message || e); toast('Erro', true); }
-};
+async function dwBotao(botao) {
+  $('#dwgo').disabled = $('#dwlist').disabled = true; $('#dwmsg').textContent = 'Aguarde...';
+  try { const r = await api('destravabotao', { botao }); $('#dwmsg').textContent = r.msg || (r.ok ? 'ok' : 'falhou'); toast(r.ok === false ? (r.msg || 'Falhou') : (botao === 'destravar' ? 'Destravado' : 'Ok'), r.ok === false); }
+  catch (e) { $('#dwmsg').textContent = 'Erro: ' + (e.message || e); toast('Erro', true); }
+  $('#dwgo').disabled = $('#dwlist').disabled = false; dwLoad();
+}
+$('#dwgo').onclick = () => dwBotao($('#dwgo').dataset.abrir ? 'abrir' : 'destravar');
+$('#dwlist').onclick = () => dwBotao('lista');
 
 // ---- monitor extra ----
 async function monLoad() {
@@ -502,7 +526,7 @@ async function monLoad() {
   } catch (e) {}
 }
 $('#msalvah').onclick = async () => { try { const r = await api('monitorcfg', { host: $('#mhost').value.trim() }); toast(r.msg, r.ok === false); monLoad(); } catch (e) { toast(String(e.message || e), true); } };
-setInterval(() => { if (MODO === 'painel' && !document.hidden) { monLoad(); pcLoad(); } }, 10000);
+setInterval(() => { if (MODO === 'painel' && !document.hidden) { monLoad(); dwLoad(); } }, 10000);
 
 // ---- configurar kiosk ----
 let KCFG = { cidade: '', lat: null, lon: null, projetos: [] };
@@ -611,7 +635,7 @@ function setModo(m, salvar) {
   $('#mb-tela').classList.toggle('on', MODO === 'tela'); $('#mb-painel').classList.toggle('on', MODO === 'painel');
   $('#tit').textContent = MODO === 'tela' ? 'Controlando a tela touch' : 'Painel';
   if (salvar) { try { localStorage.setItem('modo', MODO); } catch (e) {} try { history.replaceState(null, '', '#/' + MODO); } catch (e) {} window.scrollTo(0, 0); }
-  if (MODO === 'painel') { somLoad(); monLoad(); pcLoad(); } else { sistema(); }
+  if (MODO === 'painel') { somLoad(); monLoad(); dwLoad(); } else { sistema(); }
 }
 $('#mb-tela').onclick = () => setModo('tela', true);
 $('#mb-painel').onclick = () => setModo('painel', true);
