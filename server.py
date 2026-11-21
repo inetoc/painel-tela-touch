@@ -366,6 +366,62 @@ def shot():
             pass
 
 
+RECEBIDOS = os.path.join(os.path.dirname(BASE), 'recebidos')
+
+
+def abrir_url(d):
+    u = str(d.get('u', '')).strip()
+    if not re.match(r'^https?://[^\s]+$', u) or len(u) > 2000:
+        return {'ok': False, 'msg': 'link invalido (precisa comecar com http:// ou https://)'}
+    os.startfile(u)
+    return {'ok': True, 'msg': 'link aberto na tela touch'}
+
+
+def upload(d):
+    import base64
+    nome = os.path.basename(str(d.get('nome', 'arquivo'))).strip() or 'arquivo'
+    nome = re.sub(r'[^\w.\- ()]', '_', nome)[:120]
+    dados = base64.b64decode(d.get('b64', ''), validate=False)
+    if not dados:
+        return {'ok': False, 'msg': 'arquivo vazio'}
+    os.makedirs(RECEBIDOS, exist_ok=True)
+    dest = os.path.join(RECEBIDOS, nome)
+    base, ext = os.path.splitext(nome)
+    i = 1
+    while os.path.exists(dest):
+        dest = os.path.join(RECEBIDOS, base + ' (' + str(i) + ')' + ext)
+        i += 1
+    with open(dest, 'wb') as f:
+        f.write(dados)
+    try:
+        os.startfile(RECEBIDOS)
+    except Exception:
+        pass
+    log('recebido: ' + dest + ' (' + str(len(dados)) + ' bytes)')
+    return {'ok': True, 'msg': 'salvo em ' + dest}
+
+
+def clip_set(d):
+    t = str(d.get('t', ''))[:200000]
+    fd, path = tempfile.mkstemp(suffix='.txt', dir=BASE)
+    os.close(fd)
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(t)
+        out, rc = run_ps("Get-Content -Raw -Encoding UTF8 -LiteralPath '" + path + "' | Set-Clipboard", 20)
+        return {'ok': rc == 0, 'msg': 'copiado na tela touch' if rc == 0 else 'falhou: ' + out.strip()[:150]}
+    finally:
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+
+def clip_get():
+    out, rc = run_ps("Get-Clipboard -Raw", 20)
+    return {'ok': rc == 0, 't': out.rstrip('\r\n')[:200000]}
+
+
 def trocar_token(d):
     t = str(d.get('t', ''))
     if not re.match(r'^[A-Za-z0-9]{4,32}$', t):
@@ -454,6 +510,10 @@ class H(BaseHTTPRequestHandler):
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
                 self._send(200, {'t': MSG['t']})
+            elif rota == '/api/clip':
+                if not self._auth():
+                    return self._send(401, {'erro': 'token errado'})
+                self._send(200, clip_get())
             elif rota == '/api/sistema':
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
@@ -501,6 +561,12 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, toggle(d.get('tipo')))
             elif rota == '/api/acao':
                 self._send(200, acao(d.get('nome')))
+            elif rota == '/api/url':
+                self._send(200, abrir_url(d))
+            elif rota == '/api/upload':
+                self._send(200, upload(d))
+            elif rota == '/api/clipset':
+                self._send(200, clip_set(d))
             elif rota == '/api/tecla':
                 self._send(200, tecla(d))
             elif rota == '/api/brilho':

@@ -76,6 +76,17 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
 <h2>&#128202; Status da tela touch</h2>
 <div class="box"><div class="meters" id="sis"><div class="mt"><b>carregando...</b></div></div></div>
 
+<h2>&#128228; Enviar pra tela touch</h2>
+<div class="box">
+  <b style="font-size:13px;color:var(--mut)">&#128279; LINK (abre no navegador da tela touch)</b>
+  <div class="row" style="margin-top:6px"><input id="url" type="text" placeholder="https://..." style="flex:1;min-width:180px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;font-size:15px"><button class="b" id="urlgo">Abrir</button></div>
+  <b style="display:block;margin-top:16px;font-size:13px;color:var(--mut)">&#128193; ARQUIVO (ate 50 MB, cai em C:\prisma\recebidos)</b>
+  <div class="row" style="margin-top:6px"><input id="arq" type="file" style="flex:1;color:var(--mut)"><button class="b" id="arqgo">Enviar</button></div>
+  <b style="display:block;margin-top:16px;font-size:13px;color:var(--mut)">&#128203; AREA DE TRANSFERENCIA</b>
+  <textarea id="clip" style="height:80px;margin-top:6px;font:15px system-ui" placeholder="Texto pra copiar la, ou o que voce pegar de la"></textarea>
+  <div class="row"><button class="b" id="clipset">&#11014;&#65039; Mandar pra tela touch</button><button class="b alt" id="clipget">&#11015;&#65039; Pegar da tela touch</button></div>
+</div>
+
 <h2>&#127911; Som, midia e brilho</h2>
 <div class="box">
   <div class="row" style="margin-top:0">
@@ -306,6 +317,23 @@ $('#det').addEventListener('toggle', async () => {
     $('#devs').innerHTML = '<tr><td>Erro: ' + (e.message || e) + '</td></tr>';
   }
 });
+
+// ---- enviar pra tela touch ----
+$('#urlgo').onclick = async () => { try { const r = await api('url', { u: $('#url').value.trim() }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); } };
+$('#arqgo').onclick = () => {
+  const f = $('#arq').files[0];
+  if (!f) return toast('Escolhe um arquivo primeiro', true);
+  if (f.size > 50 * 1024 * 1024) return toast('Passou de 50 MB', true);
+  toast('Enviando ' + f.name + '...');
+  const fr = new FileReader();
+  fr.onload = async () => {
+    try { const r = await api('upload', { nome: f.name, b64: String(fr.result).split(',')[1] }); toast(r.msg, r.ok === false); }
+    catch (e) { toast(String(e.message || e), true); }
+  };
+  fr.readAsDataURL(f);
+};
+$('#clipset').onclick = async () => { try { const r = await api('clipset', { t: $('#clip').value }); toast(r.msg, r.ok === false); } catch (e) { toast(String(e.message || e), true); } };
+$('#clipget').onclick = async () => { try { const r = await api('clip'); if (r.ok) { $('#clip').value = r.t; toast('Pegado da tela touch'); } else toast('Falhou', true); } catch (e) { toast(String(e.message || e), true); } };
 
 // ---- status, som/brilho, foto ----
 function medidor(t, v, pct, extra) { return '<div class="mt"><b>' + t + '</b><div class="v">' + v + '</div><div class="tr"><i style="width:' + (pct || 0) + '%"></i></div>' + (extra ? '<div style="font-size:12px;color:var(--mut);margin-top:4px">' + extra + '</div>' : '') + '</div>'; }
