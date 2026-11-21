@@ -523,6 +523,95 @@ def projetos():
     return _proj['v']
 
 
+MACROS_FILE = os.path.join(BASE, 'macros.json')
+MASK = '****'
+
+
+def macros_ler():
+    try:
+        with open(MACROS_FILE, encoding='utf-8') as f:
+            l = json.load(f)
+        return l if isinstance(l, list) else []
+    except Exception:
+        return []
+
+
+def macros_publico():
+    out = []
+    for m in macros_ler():
+        m = dict(m)
+        m['headers'] = {k: (MASK if v else '') for k, v in (m.get('headers') or {}).items()}
+        m['basic'] = MASK if m.get('basic') else ''
+        out.append(m)
+    return out
+
+
+def macros_salvar(d):
+    antigos = {m.get('id'): m for m in macros_ler()}
+    novos, usados = [], set()
+    for i, m in enumerate((d.get('macros') or [])[:40]):
+        if not isinstance(m, dict):
+            continue
+        nome = str(m.get('nome', '')).strip()[:40]
+        url = str(m.get('url', '')).strip()
+        if not nome or not re.match(r'^https?://[^\s]+$', url) or len(url) > 500:
+            continue
+        mid = str(m.get('id', '')).strip()
+        if not re.match(r'^[a-z0-9_-]{1,40}$', mid) or mid in usados:
+            mid = 'm' + str(i + 1) + '-' + secrets.token_hex(2)
+        usados.add(mid)
+        old = antigos.get(mid, {})
+        hs = {}
+        for k, v in list((m.get('headers') or {}).items())[:10]:
+            k = str(k).strip()
+            if re.match(r'^[A-Za-z0-9-]{1,60}$', k):
+                v = str(v)
+                hs[k] = (old.get('headers') or {}).get(k, '') if v == MASK else v[:500]
+        basic = str(m.get('basic', ''))
+        basic = old.get('basic', '') if basic == MASK else basic[:200]
+        metodo = str(m.get('metodo', 'GET')).upper()
+        emoji = [int(x) for x in (m.get('emoji') or [])[:4] if isinstance(x, int) and 0 < x <= 0x10FFFF]
+        novos.append({'id': mid, 'nome': nome, 'emoji': emoji, 'metodo': metodo if metodo in ('GET', 'POST', 'PUT', 'PATCH', 'DELETE') else 'GET',
+                      'url': url, 'headers': hs, 'basic': basic, 'corpo': str(m.get('corpo', ''))[:4000],
+                      'pergunta': str(m.get('pergunta', ''))[:60], 'confirmar': bool(m.get('confirmar'))})
+    with open(MACROS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(novos, f, ensure_ascii=True)
+    return {'ok': True, 'msg': str(len(novos)) + ' macros salvas'}
+
+
+def macro_exec(d):
+    import base64, urllib.request, urllib.error
+    m = next((x for x in macros_ler() if x.get('id') == d.get('id')), None)
+    if not m:
+        return {'ok': False, 'erro': 'macro nao existe'}
+    texto = str(d.get('texto', ''))[:2000]
+    corpo = str(m.get('corpo', ''))
+    if '{{texto}}' in corpo:
+        corpo = corpo.replace('{{texto}}', json.dumps(texto, ensure_ascii=True)[1:-1])
+    hs = {'User-Agent': 'painel-tela-touch'}
+    hs.update(m.get('headers') or {})
+    if m.get('basic'):
+        hs['Authorization'] = 'Basic ' + base64.b64encode(str(m['basic']).encode('utf-8')).decode()
+    data = None
+    if corpo and m.get('metodo') != 'GET':
+        data = corpo.encode('utf-8')
+        if not any(k.lower() == 'content-type' for k in hs):
+            hs['Content-Type'] = 'application/json'
+    t0 = time.time()
+    try:
+        rq = urllib.request.Request(m['url'], data=data, headers=hs, method=m.get('metodo', 'GET'))
+        try:
+            with urllib.request.urlopen(rq, timeout=15) as r:
+                st, txt = r.status, r.read(20000)
+        except urllib.error.HTTPError as e:
+            st, txt = e.code, e.read(20000)
+        res = {'ok': st < 400, 'status': st, 'corpo': txt.decode('utf-8', 'replace')[:3000], 'ms': int((time.time() - t0) * 1000)}
+    except Exception as e:
+        res = {'ok': False, 'erro': 'falhou: ' + str(e)[:200]}
+    log('macro ' + str(m.get('nome')) + ' -> ' + str(res.get('status', res.get('erro'))))
+    return res
+
+
 def trocar_token(d):
     t = str(d.get('t', ''))
     if not re.match(r'^[A-Za-z0-9]{4,32}$', t):
@@ -621,6 +710,10 @@ class H(BaseHTTPRequestHandler):
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
                 self._send(200, {'t': MSG['t']})
+            elif rota == '/api/macros':
+                if not self._auth():
+                    return self._send(401, {'erro': 'token errado'})
+                self._send(200, macros_publico())
             elif rota == '/api/clip':
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
@@ -674,6 +767,10 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, acao(d.get('nome')))
             elif rota == '/api/kioskcfg':
                 self._send(200, kiosk_salvar(d))
+            elif rota == '/api/macros':
+                self._send(200, macros_salvar(d))
+            elif rota == '/api/macro':
+                self._send(200, macro_exec(d))
             elif rota == '/api/url':
                 self._send(200, abrir_url(d))
             elif rota == '/api/upload':

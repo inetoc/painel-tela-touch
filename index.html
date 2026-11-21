@@ -87,6 +87,16 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
   <div class="row"><button class="b" id="clipset">&#11014;&#65039; Mandar pra tela touch</button><button class="b alt" id="clipget">&#11015;&#65039; Pegar da tela touch</button></div>
 </div>
 
+<h2>&#127899;&#65039; Macros</h2>
+<div class="grid" id="macrogrid"></div>
+<pre id="mout" style="margin-top:12px">O resultado da macro aparece aqui.</pre>
+<div class="row"><button class="b alt" id="mcpy">&#128203; Copiar resultado</button></div>
+<details style="margin-top:12px"><summary>Importar / editar macros (JSON)</summary>
+  <p style="color:var(--mut);font-size:13px;margin:8px 0">Tokens e senhas aparecem como ****. Deixa **** pra manter o valor guardado, ou troca pelo valor novo.</p>
+  <textarea id="mjson" style="height:220px;font:12.5px ui-monospace,Consolas,monospace"></textarea>
+  <div class="row"><button class="b" id="msalva">&#128190; Salvar macros</button></div>
+</details>
+
 <h2>&#128444;&#65039; Configurar o kiosk</h2>
 <div class="box">
   <b style="font-size:13px;color:var(--mut)">&#127780;&#65039; CIDADE DO CLIMA <span id="kinfo"></span></b>
@@ -346,6 +356,38 @@ $('#cpy').onclick = () => {
   if (!t || t === 'A saida aparece aqui.') return toast('Nada pra copiar ainda', true);
   copiar(t).then(() => toast('Saida copiada'), e => toast('Nao consegui copiar: ' + (e.message || e), true));
 };
+
+// ---- macros ----
+let MAC = [];
+function mDesenha() {
+  const g = $('#macrogrid'); g.innerHTML = '';
+  if (!MAC.length) { g.innerHTML = '<div style="color:var(--mut)">Nenhuma macro ainda. Abre "Importar / editar macros" e cola o JSON.</div>'; return; }
+  MAC.forEach(m => {
+    const b = document.createElement('button'); b.className = 'card neutral';
+    b.innerHTML = '<span class="ic">' + E(m.emoji && m.emoji.length ? m.emoji : [0x1F39B, 0xFE0F]) + '</span><b></b>';
+    b.querySelector('b').textContent = m.nome;
+    b.onclick = () => mRoda(m);
+    g.appendChild(b);
+  });
+}
+async function mLoad() { try { MAC = await api('macros'); mDesenha(); $('#mjson').value = JSON.stringify(MAC, null, 1); } catch (e) {} }
+async function mRoda(m) {
+  let texto = '';
+  if (m.pergunta) { texto = prompt(m.pergunta) || ''; if (!texto) return; }
+  if (m.confirmar && !confirm('Disparar "' + m.nome + '"?')) return;
+  $('#mout').textContent = 'Rodando ' + m.nome + '...';
+  try {
+    const r = await api('macro', { id: m.id, texto });
+    $('#mout').textContent = (r.erro || ('HTTP ' + r.status + ' (' + r.ms + ' ms)')) + '\n' + (r.corpo || '');
+    toast(r.ok ? 'Macro ok' : 'Macro falhou', !r.ok);
+  } catch (e) { $('#mout').textContent = 'Erro: ' + (e.message || e); toast('Erro', true); }
+}
+$('#msalva').onclick = async () => {
+  let l; try { l = JSON.parse($('#mjson').value); } catch (e) { return toast('JSON invalido: ' + e.message, true); }
+  try { const r = await api('macros', { macros: l }); toast(r.msg, r.ok === false); mLoad(); } catch (e) { toast(String(e.message || e), true); }
+};
+$('#mcpy').onclick = () => copiar($('#mout').textContent).then(() => toast('Resultado copiado'), e => toast('Nao consegui copiar', true));
+mLoad();
 
 // ---- configurar kiosk ----
 let KCFG = { cidade: '', lat: null, lon: null, projetos: [] };
