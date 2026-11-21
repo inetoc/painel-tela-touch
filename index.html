@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" id="tc" content="#0f0d1c">
 <title>Tela touch</title>
 <style>
 :root{--bg:#0f0d1c;--card:#1a1733;--line:#2e2a5a;--txt:#ece9ff;--mut:#9a96c4;--ok:#1e8c5a;--bad:#aa3246;--neu:#3c376e;--acc:#6e46c8}
@@ -40,16 +41,29 @@ td,th{padding:6px;border-bottom:1px solid var(--line);text-align:left}
 #bar{height:10px;background:#0a0818;border:1px solid #2a2550;border-radius:8px;margin:10px 0;overflow:hidden;display:none;position:relative}
 #barf{height:100%;width:0;background:linear-gradient(90deg,#6c3fd1,#9b7bff);transition:width .25s linear}
 #barp{font-size:12px;color:#9a96c4;margin-left:auto}
+body.local{--acc:#d98a1a;--bg:#1a1206}
+body.remoto{--acc:#1a9ad9;--bg:#06141f}
+#faixa{margin:-18px -18px 14px;padding:10px 18px;font-weight:800;font-size:14px;letter-spacing:.5px;color:#fff;background:var(--acc)}
+#pad{height:230px;border:2px dashed var(--acc);border-radius:14px;background:#07060f;touch-action:none;user-select:none;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:13px;text-align:center;padding:10px}
+#pad.on{background:#120f26}
 </style>
 </head>
 <body>
-<header><span class="dot" id="conn"></span><h1>Tela touch</h1></header>
+<div id="faixa"></div>
+<header><span class="dot" id="conn"></span><h1 id="tit">Tela touch</h1></header>
 
 <div class="grid" id="grid"></div>
 
 <h2>Texto ao vivo na tela touch</h2>
 <textarea id="txt" style="height:90px;font:16px system-ui" placeholder="Escreve aqui e aperta Enviar (Ctrl+Enter). Antes, toca no card Tela de texto pra abrir la."></textarea>
 <div class="row"><button class="b" id="env">Enviar</button><button class="b alt" id="envl">Limpar la</button></div>
+
+<h2>Mouse da tela touch</h2>
+<div id="pad">Arrasta aqui pra mover o mouse da tela touch. Toque rapido = clique.</div>
+<div class="row">
+  <button class="b alt" id="mE">Esquerdo</button><button class="b alt" id="mD">Direito</button><button class="b alt" id="m2">Duplo</button>
+  <button class="b alt" id="mA">Arrastar: off</button><button class="b alt" id="sU">Rolar &#9650;</button><button class="b alt" id="sD">Rolar &#9660;</button>
+</div>
 
 <h2>Rodar PowerShell na tela touch</h2>
 <div class="chips" id="presets"></div>
@@ -77,6 +91,12 @@ td,th{padding:6px;border-bottom:1px solid var(--line);text-align:left}
 
 <script>
 const $ = s => document.querySelector(s);
+const LOCAL = ['127.0.0.1', 'localhost'].indexOf(location.hostname) >= 0;
+document.body.className = LOCAL ? 'local' : 'remoto';
+$('#faixa').innerHTML = LOCAL ? '&#128421; VOCE ESTA NA TELA TOUCH (painel local)' : '&#128279; REMOTO: controlando a tela touch de outro computador';
+$('#tit').innerHTML = LOCAL ? '&#128421; Tela touch (aqui)' : '&#128279; Controlando a tela touch';
+document.title = LOCAL ? 'AQUI - Tela touch' : 'REMOTO - Tela touch';
+$('#tc').content = LOCAL ? '#d98a1a' : '#1a9ad9';
 let TOKEN = '';
 try { TOKEN = localStorage.getItem('tk') || ''; } catch (e) {}
 if (location.hash.length > 1) {
@@ -229,6 +249,36 @@ $('#det').addEventListener('toggle', async () => {
     $('#devs').innerHTML = '<tr><td>Erro: ' + (e.message || e) + '</td></tr>';
   }
 });
+
+// ---- mouse remoto ----
+let pdx = 0, pdy = 0, enviando = false, arrasta = false;
+function mouseSend(o) {
+  return fetch('/api/mouse', { method: 'POST', headers: { 'X-Token': TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify(o) })
+    .then(r => { if (r.status === 401) pedirToken(); }).catch(() => {});
+}
+setInterval(async () => {
+  if (enviando || (!pdx && !pdy)) return;
+  const dx = Math.round(pdx), dy = Math.round(pdy); pdx = 0; pdy = 0;
+  enviando = true; await mouseSend({ dx, dy }); enviando = false;
+}, 40);
+(function () {
+  const pad = $('#pad'); let ult = null, t0 = 0, mov = 0;
+  pad.addEventListener('pointerdown', e => { pad.setPointerCapture(e.pointerId); ult = [e.clientX, e.clientY]; t0 = Date.now(); mov = 0; pad.classList.add('on'); });
+  pad.addEventListener('pointermove', e => {
+    if (!ult) return;
+    const x = e.clientX - ult[0], y = e.clientY - ult[1];
+    ult = [e.clientX, e.clientY]; mov += Math.abs(x) + Math.abs(y);
+    pdx += x * 2; pdy += y * 2;
+  });
+  pad.addEventListener('pointerup', () => { if (!ult) return; ult = null; pad.classList.remove('on'); if (mov < 6 && Date.now() - t0 < 300) mouseSend({ click: 'left' }); });
+  pad.addEventListener('pointercancel', () => { ult = null; pad.classList.remove('on'); });
+  $('#mE').onclick = () => mouseSend({ click: 'left' });
+  $('#mD').onclick = () => mouseSend({ click: 'right' });
+  $('#m2').onclick = () => mouseSend({ click: 'double' });
+  $('#sU').onclick = () => mouseSend({ scroll: 3 });
+  $('#sD').onclick = () => mouseSend({ scroll: -3 });
+  $('#mA').onclick = () => { arrasta = !arrasta; mouseSend({ click: arrasta ? 'down' : 'up' }); $('#mA').textContent = 'Arrastar: ' + (arrasta ? 'ON (toca de novo pra soltar)' : 'off'); };
+})();
 
 if (!TOKEN) pedirToken();
 refresh();

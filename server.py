@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # Painel do Notebook: servidor local (so Python padrao). Escuta em 127.0.0.1 e no IP do Tailscale.
 import json, os, re, sys, time, hmac, atexit, secrets, threading, subprocess, tempfile, ctypes
+import ctypes.wintypes
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -253,6 +254,35 @@ def acao(nome):
 
 
 MSG = {'t': ''}
+
+
+def mouse(d):
+    u = ctypes.windll.user32
+    ev = u.mouse_event
+    if 'dx' in d or 'dy' in d:
+        dx = max(-2000, min(2000, int(d.get('dx', 0))))
+        dy = max(-2000, min(2000, int(d.get('dy', 0))))
+        pt = ctypes.wintypes.POINT()
+        u.GetCursorPos(ctypes.byref(pt))
+        u.SetCursorPos(pt.x + dx, pt.y + dy)
+    c = d.get('click')
+    if c in ('left', 'double'):
+        for _ in range(2 if c == 'double' else 1):
+            ev(0x0002, 0, 0, 0, 0)
+            ev(0x0004, 0, 0, 0, 0)
+    elif c == 'right':
+        ev(0x0008, 0, 0, 0, 0)
+        ev(0x0010, 0, 0, 0, 0)
+    elif c == 'down':
+        ev(0x0002, 0, 0, 0, 0)
+    elif c == 'up':
+        ev(0x0004, 0, 0, 0, 0)
+    if 'scroll' in d:
+        n = max(-30, min(30, int(d['scroll'])))
+        ev(0x0800, 0, 0, (n * 120) & 0xFFFFFFFF, 0)
+    return {'ok': True}
+
+
 TELA_HTML = """<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tela touch</title>
 <style>html,body{height:100%;margin:0;background:#0f0d1c;color:#ece9ff;font-family:system-ui,"Segoe UI",sans-serif}
 #t{box-sizing:border-box;min-height:100%;padding:4vh 5vw;font-size:5vw;line-height:1.3;white-space:pre-wrap;word-break:break-word;display:flex;align-items:center}
@@ -342,6 +372,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, toggle(d.get('tipo')))
             elif rota == '/api/acao':
                 self._send(200, acao(d.get('nome')))
+            elif rota == '/api/mouse':
+                self._send(200, mouse(d))
             elif rota == '/api/dev':
                 self._send(200, dev_toggle(d.get('id', '')))
             else:
