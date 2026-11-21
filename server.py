@@ -262,6 +262,10 @@ def acao(nome):
     if nome == 'abrir_tela':
         subprocess.Popen('start "" "http://127.0.0.1:' + str(PORT) + '/tela#' + TOKEN + '"', shell=True, creationflags=NOWIN)
         return {'ok': True, 'msg': 'tela de texto aberta na tela touch (duplo toque = tela cheia)'}
+    if nome == 'monitor_iniciar':
+        return monitor_iniciar()
+    if nome == 'monitor_parar':
+        return monitor_parar()
     if nome == 'abrir_kiosk':
         subprocess.Popen('start "" "http://127.0.0.1:' + str(PORT) + '/kiosk#' + TOKEN + '"', shell=True, creationflags=NOWIN)
         return {'ok': True, 'msg': 'kiosk aberto na tela touch (duplo toque = tela cheia)'}
@@ -626,6 +630,96 @@ def macro_exec(d):
     return res
 
 
+MONITOR_CFG = os.path.join(BASE, 'monitor.json')
+MOON_FIXOS = (r'C:\Program Files\Moonlight Game Streaming\Moonlight.exe',
+              r'C:\Program Files (x86)\Moonlight Game Streaming\Moonlight.exe')
+
+
+def monitor_cfg():
+    try:
+        with open(MONITOR_CFG, encoding='utf-8') as f:
+            c = json.load(f)
+    except Exception:
+        c = {}
+    return {'host': str(c.get('host', ''))[:100], 'app': str(c.get('app', '') or 'Desktop')[:60], 'exe': str(c.get('exe', ''))[:300]}
+
+
+def monitor_salvar(d):
+    c = monitor_cfg()
+    host = str(d.get('host', c['host'])).strip()
+    if host and not re.match(r'^[A-Za-z0-9.\-]{1,100}$', host):
+        return {'ok': False, 'msg': 'endereco invalido (so letras, numeros, ponto e hifen)'}
+    c['host'] = host
+    c['app'] = str(d.get('app', c['app'])).strip()[:60] or 'Desktop'
+    with open(MONITOR_CFG, 'w', encoding='utf-8') as f:
+        json.dump(c, f, ensure_ascii=True)
+    return {'ok': True, 'msg': 'monitor extra salvo'}
+
+
+def moonlight_exe():
+    c = monitor_cfg()
+    for p in (c['exe'],) + MOON_FIXOS:
+        if p and os.path.exists(p):
+            return p
+    # procura em Program Files (ate 3 niveis) e guarda o achado
+    for base in (os.environ.get('ProgramFiles'), os.environ.get('ProgramFiles(x86)'), os.path.join(os.environ.get('LOCALAPPDATA', ''), 'Programs')):
+        if not base or not os.path.isdir(base):
+            continue
+        nb = base.rstrip('\\/').count(os.sep)
+        for root, dirs, files in os.walk(base):
+            if root.count(os.sep) - nb >= 3:
+                dirs[:] = []
+            for f in files:
+                if f.lower() == 'moonlight.exe':
+                    achado = os.path.join(root, f)
+                    c['exe'] = achado
+                    with open(MONITOR_CFG, 'w', encoding='utf-8') as fh:
+                        json.dump(c, fh, ensure_ascii=True)
+                    return achado
+    return None
+
+
+def moonlight_rodando():
+    try:
+        r = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq Moonlight.exe', '/NH'], capture_output=True, creationflags=NOWIN, timeout=10)
+        return b'Moonlight.exe' in r.stdout
+    except Exception:
+        return False
+
+
+def monitor_status():
+    c = monitor_cfg()
+    ms = None
+    if c['host']:
+        try:
+            t0 = time.time()
+            r = subprocess.run(['ping', '-n', '1', '-w', '1500', c['host']], capture_output=True, creationflags=NOWIN, timeout=6)
+            if r.returncode == 0:
+                ms = int((time.time() - t0) * 1000)
+        except Exception:
+            pass
+    return {'host': c['host'], 'app': c['app'], 'rodando': moonlight_rodando(), 'alcancavel': ms is not None, 'ms': ms}
+
+
+def monitor_iniciar():
+    c = monitor_cfg()
+    if not c['host']:
+        return {'ok': False, 'msg': 'falta o endereco do computador (preenche em Monitor extra e salva)'}
+    exe = moonlight_exe()
+    if not exe:
+        return {'ok': False, 'msg': 'nao achei o Moonlight nesta maquina'}
+    if moonlight_rodando():
+        return {'ok': True, 'msg': 'o Moonlight ja esta aberto'}
+    subprocess.Popen([exe, 'stream', c['host'], c['app']], close_fds=True)
+    log('monitor extra iniciado: ' + c['host'] + ' / ' + c['app'])
+    return {'ok': True, 'msg': 'monitor extra iniciando na tela touch...'}
+
+
+def monitor_parar():
+    subprocess.run(['taskkill', '/IM', 'Moonlight.exe', '/F'], capture_output=True, creationflags=NOWIN, timeout=10)
+    return {'ok': True, 'msg': 'monitor extra encerrado'}
+
+
 def trocar_token(d):
     t = str(d.get('t', ''))
     if not re.match(r'^[A-Za-z0-9]{4,32}$', t):
@@ -728,6 +822,10 @@ class H(BaseHTTPRequestHandler):
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
                 self._send(200, macros_publico())
+            elif rota == '/api/monitor':
+                if not self._auth():
+                    return self._send(401, {'erro': 'token errado'})
+                self._send(200, monitor_status())
             elif rota == '/api/clip':
                 if not self._auth():
                     return self._send(401, {'erro': 'token errado'})
@@ -785,6 +883,8 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, macros_salvar(d))
             elif rota == '/api/macro':
                 self._send(200, macro_exec(d))
+            elif rota == '/api/monitorcfg':
+                self._send(200, monitor_salvar(d))
             elif rota == '/api/url':
                 self._send(200, abrir_url(d))
             elif rota == '/api/upload':

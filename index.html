@@ -97,6 +97,13 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
   <div class="row"><button class="b" id="msalva">&#128190; Salvar macros</button></div>
 </details>
 
+<h2>&#128421;&#65039; Monitor extra (tela touch como segunda tela)</h2>
+<div class="box">
+  <b style="font-size:13px;color:var(--mut)">ENDERECO DO COMPUTADOR (IP Tailscale ou nome)</b>
+  <div class="row" style="margin-top:6px"><input id="mhost" type="text" placeholder="ex.: 100.x.x.x" style="flex:1;min-width:180px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#07060f;color:#fff;font-size:15px"><button class="b" id="msalvah">&#128190; Salvar</button></div>
+  <div id="mstat" style="margin-top:10px;font-size:14px;color:var(--mut)">...</div>
+</div>
+
 <h2>&#128444;&#65039; Configurar o kiosk</h2>
 <div class="box">
   <b style="font-size:13px;color:var(--mut)">&#127780;&#65039; CIDADE DO CLIMA <span id="kinfo"></span></b>
@@ -243,6 +250,8 @@ const CARDS = [
   { e: [0x1F446], nome: 'Touchscreen', f: s => tri(s.touchscreen), go: () => api('toggle', { tipo: 'touchscreen' }) },
   { e: [0x1F524], nome: 'Teclado na tela', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'osk' }) },
   { e: [0x1F4AC], nome: 'Tela de texto', f: () => ['neutral', 'abrir na tela touch'], go: () => api('acao', { nome: 'abrir_tela' }) },
+  { e: [0x1F5A5, 0xFE0F], nome: 'Monitor extra: ligar', f: () => MON.rodando ? ['ok', 'LIGADO (toca pra conferir)'] : ['neutral', MON.host ? 'abre o Moonlight no seu PC' : 'configure o endereco abaixo'], go: () => api('acao', { nome: 'monitor_iniciar' }) },
+  { e: [0x23F9, 0xFE0F], nome: 'Monitor extra: parar', f: () => ['neutral', 'fecha o Moonlight'], go: () => api('acao', { nome: 'monitor_parar' }) },
   { e: [0x1F5BC, 0xFE0F], nome: 'Kiosk', f: () => ['neutral', 'relogio, clima e projetos na tela touch'], go: () => api('acao', { nome: 'abrir_kiosk' }) },
   { e: [0x1F504], nome: 'Atualizar painel', f: () => ['neutral', 'puxa a versao nova do GitHub'], go: async () => { const r = await api('acao', { nome: 'atualizar' }); if (r.ok) esperarPainel(); return r; } },
   { e: [0x1F501], nome: 'Reiniciar painel', f: () => ['neutral', 'so o painel, nao o PC'], go: async () => { const r = await api('acao', { nome: 'reiniciar_painel' }); if (r.ok) esperarPainel(); return r; } },
@@ -254,7 +263,7 @@ const CARDS = [
   { e: [0x1F50C], nome: 'Desligar PC', f: () => ['bad', 'desliga a tela touch'], go: () => confirm('Desligar a tela touch?') ? api('acao', { nome: 'desligar' }) : null }
 ];
 
-let ST = {};
+let ST = {}, MON = {};
 function desenhar() {
   const g = $('#grid');
   g.innerHTML = '';
@@ -397,6 +406,18 @@ $('#msalva').onclick = async () => {
 };
 $('#mcpy').onclick = () => copiar($('#mout').textContent).then(() => toast('Resultado copiado'), e => toast('Nao consegui copiar', true));
 mLoad();
+
+// ---- monitor extra ----
+async function monLoad() {
+  try {
+    MON = await api('monitor');
+    $('#mstat').textContent = (MON.host ? 'Computador: ' + MON.host + (MON.alcancavel ? '  (responde em ' + MON.ms + ' ms)' : '  (NAO responde)') : 'Endereco ainda nao configurado') + '  |  Moonlight: ' + (MON.rodando ? 'aberto' : 'fechado');
+    if (!$('#mhost').value && MON.host) $('#mhost').value = MON.host;
+    desenhar();
+  } catch (e) {}
+}
+$('#msalvah').onclick = async () => { try { const r = await api('monitorcfg', { host: $('#mhost').value.trim() }); toast(r.msg, r.ok === false); monLoad(); } catch (e) { toast(String(e.message || e), true); } };
+monLoad(); setInterval(monLoad, 10000);
 
 // ---- configurar kiosk ----
 let KCFG = { cidade: '', lat: null, lon: null, projetos: [] };
