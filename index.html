@@ -127,6 +127,7 @@ body.remoto{--acc:#1a9ad9;--bg:#06141f}
 <div class="row">
   <button class="b" id="run">Executar (Ctrl+Enter)</button>
   <button class="b alt" id="clr">Limpar saida</button>
+  <button class="b alt" id="cpy">&#128203; Copiar saida</button>
   <span id="tempo" style="color:#9a96c4;font-size:13px"></span><span id="barp"></span>
 </div>
 <div id="bar"><div id="barf"></div></div>
@@ -328,6 +329,23 @@ $('#det').addEventListener('toggle', async () => {
     $('#devs').innerHTML = '<tr><td>Erro: ' + (e.message || e) + '</td></tr>';
   }
 });
+
+// ---- copiar saida do PowerShell (funciona em http, sem depender da API de clipboard) ----
+function copiar(t) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t);
+  return new Promise((ok, erro) => {
+    const a = document.createElement('textarea');
+    a.value = t; a.style.position = 'fixed'; a.style.opacity = '0';
+    document.body.appendChild(a); a.focus(); a.select();
+    try { document.execCommand('copy') ? ok() : erro(new Error('o navegador negou')); } catch (e) { erro(e); }
+    document.body.removeChild(a);
+  });
+}
+$('#cpy').onclick = () => {
+  const t = $('#out').textContent;
+  if (!t || t === 'A saida aparece aqui.') return toast('Nada pra copiar ainda', true);
+  copiar(t).then(() => toast('Saida copiada'), e => toast('Nao consegui copiar: ' + (e.message || e), true));
+};
 
 // ---- configurar kiosk ----
 let KCFG = { cidade: '', lat: null, lon: null, projetos: [] };
